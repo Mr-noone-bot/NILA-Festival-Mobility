@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     # External APIs (Configurable via .env)
     GEMINI_API_KEY: str = ""
     OSRM_BACKEND_URL: str = "https://router.project-osrm.org"
+    OSRM_TIMEOUT_SECONDS: float = 3.5
+    ROUTE_CACHE_TTL_SECONDS: int = 3600
+    
+    # Operational & Simulation Defaults
+    DEFAULT_BUS_CAPACITY: int = 50
+    ALLOW_SYNTHETIC_CAPACITY_FALLBACK: bool = True
+    FALLBACK_AVERAGE_SPEED_KMH: float = 20.0
+    DATA_DIR: str = "data"
     
     model_config = SettingsConfigDict(
         env_file=".env",
