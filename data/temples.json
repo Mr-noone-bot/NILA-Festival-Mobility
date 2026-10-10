@@ -1,0 +1,6 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NILA Temples Schema",
+  "description": "Temple locations, gates, zone capacities, and sacred event zones. To be populated by data owner.",
+  "items": []
+}

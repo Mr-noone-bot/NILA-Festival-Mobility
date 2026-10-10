@@ -1,0 +1,6 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NILA Buses & Fleet Inventory Schema",
+  "description": "Fixed bus fleet inventory. Enforces fixed fleet constraint: fleet size is conserved. To be populated by data owner.",
+  "items": []
+}

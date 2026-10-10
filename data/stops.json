@@ -1,0 +1,6 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NILA Bus Stops Schema",
+  "description": "Bus stops, boarding capacities, geographical coordinates, and proximity to temple gates. To be populated by data owner.",
+  "items": []
+}

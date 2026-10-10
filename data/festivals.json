@@ -1,0 +1,6 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NILA Festivals Schema",
+  "description": "Festival catalog containing dates, venues, expected peak times, and events. To be populated by data owner.",
+  "items": []
+}
