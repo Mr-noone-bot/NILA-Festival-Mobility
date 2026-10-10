@@ -84,12 +84,12 @@ class NilaAIService:
         """
         q = question.lower()
 
-        # 1. Trade-offs and Bus Movement Inquiries
+        # 1. Trade-offs and Bus Movement Inquiries — Phase 5: routes to real optimizer
         if any(w in q for w in ("tradeoff", "trade-off", "why move", "moving a bus", "reposition")):
             res = self.tools.get_tradeoffs(festival_id)
             return "get_tradeoffs", res, "NILA optimization engine"
 
-        # 2. Optimization Plan Inquiries
+        # 2. Optimization Plan Inquiries — Phase 5: routes to real optimizer
         if any(w in q for w in ("bus plan", "allocation", "fleet plan", "recommend")):
             res = self.tools.get_current_plan(festival_id)
             return "get_current_plan", res, "NILA optimization engine"
@@ -192,6 +192,49 @@ class NilaAIService:
             name = data.get("name", "Festival")
             stops = [s["name"] for s in data.get("stops", [])]
             return f"[Grounded NILA Brief] {name} is configured with {len(stops)} bus terminals: {', '.join(stops)}."
+
+        elif tool_name == "get_current_plan":
+            if data.get("plan_available"):
+                plan_id = data.get("plan_id", "N/A")
+                total_fleet = data.get("total_fleet_size", 0)
+                moves = data.get("repositioning_moves", [])
+                queue_reduction = data.get("overall_queue_reduction_percentage", 0.0)
+                unserved_before = data.get("unserved_demand_before", 0)
+                unserved_after = data.get("unserved_demand_after", 0)
+                lines = [
+                    f"[Grounded NILA Optimization Brief] Plan {plan_id}:",
+                    f"Fixed fleet of {total_fleet} buses redistributed with {len(moves)} repositioning move(s).",
+                    f"Network queue reduction: {queue_reduction}% (unserved passengers: {unserved_before:,} → {unserved_after:,}).",
+                ]
+                for mv in moves[:3]:  # summarize up to 3 moves
+                    lines.append(
+                        f"  Move: {mv['buses_to_transfer']} bus(es) from {mv['source_stop']} → {mv['destination_stop']} "
+                        f"({mv['travel_time_minutes']} min transit)."
+                    )
+                return " ".join(lines)
+            else:
+                return data.get("message", "No active optimization plan computed.")
+
+        elif tool_name == "get_tradeoffs":
+            moves = data.get("moves", [])
+            queue_reduction = data.get("overall_queue_reduction_percentage", 0.0)
+            total_fleet = data.get("total_fleet_size", 0)
+            if moves:
+                lines = [
+                    f"[Grounded NILA Trade-Off Brief] {len(moves)} vehicle repositioning move(s) analysed.",
+                    f"Fixed fleet: {total_fleet} buses. Network queue reduction: {queue_reduction}%.",
+                ]
+                for mv in moves[:3]:
+                    lines.append(
+                        f"  {mv['buses_to_transfer']} bus(es) from {mv['source_stop']} → {mv['destination_stop']}: "
+                        f"{mv['expected_benefit']}"
+                    )
+                return " ".join(lines)
+            else:
+                return (
+                    f"[Grounded NILA Brief] Fixed fleet of {total_fleet} buses is optimally distributed. "
+                    "No repositioning moves required under current forecast."
+                )
 
         return f"[Grounded NILA Brief] Authoritative data loaded for {tool_name}."
 

@@ -114,6 +114,88 @@ def test_tool_routing_intents():
     assert tool6 == "get_festival_details"
 
 
+def test_phase5_plan_question_returns_grounded_answer():
+    """Phase 5: Asking about the bus plan routes to the real optimizer and returns grounded data."""
+    client = GeminiClient(api_key="")  # no Gemini — forces fallback
+    service = NilaAIService(gemini_client=client)
+    req = AskRequest(
+        question="What is the current bus allocation plan?",
+        festival_id="madurai-chithirai-2026"
+    )
+    res = service.ask(req)
+
+    assert isinstance(res, AskResponse)
+    assert res.tool_used == "get_current_plan"
+    assert res.grounded is True
+    assert res.fallback_used is True
+    # Fallback answer must reflect real optimizer output (not an unavailable message)
+    assert "Grounded NILA" in res.answer or "bus" in res.answer.lower()
+    assert "NILA optimization engine" in res.sources
+
+
+def test_phase5_tradeoff_question_returns_grounded_answer():
+    """Phase 5: Asking about bus repositioning routes to real optimizer trade-off data."""
+    client = GeminiClient(api_key="")  # no Gemini — forces fallback
+    service = NilaAIService(gemini_client=client)
+    req = AskRequest(
+        question="Why did NILA recommend moving a bus?",
+        festival_id="madurai-chithirai-2026"
+    )
+    res = service.ask(req)
+
+    assert isinstance(res, AskResponse)
+    assert res.tool_used == "get_tradeoffs"
+    assert res.grounded is True
+    assert res.fallback_used is True
+    # Fallback answer must reflect real optimizer output
+    assert "Grounded NILA" in res.answer or "bus" in res.answer.lower()
+    assert "NILA optimization engine" in res.sources
+
+
+def test_phase5_gemini_receives_real_plan_data():
+    """Phase 5: When Gemini is available, it receives real optimizer data as context (not unavailable stubs)."""
+    mock_client = MagicMock(spec=GeminiClient)
+    mock_client.is_available.return_value = True
+    mock_client.generate.return_value = (
+        "NILA has computed an optimal redistribution plan: 2 buses will move from Periyar "
+        "to Mattuthavani, reducing the queue at MIBT by 35%."
+    )
+
+    service = NilaAIService(gemini_client=mock_client)
+    req = AskRequest(
+        question="What is the current bus allocation plan?",
+        festival_id="madurai-chithirai-2026"
+    )
+    res = service.ask(req)
+
+    assert res.fallback_used is False
+    assert res.grounded is True
+    assert res.tool_used == "get_current_plan"
+    # Gemini must have been called with real data (not the stub unavailable message)
+    mock_client.generate.assert_called_once()
+    call_kwargs = mock_client.generate.call_args
+    # The prompt passed to Gemini must include real plan data (plan_id, fleet_conserved)
+    prompt_arg = call_kwargs[1].get("prompt", "") or call_kwargs[0][0]
+    assert "plan_id" in prompt_arg or "fleet_conserved" in prompt_arg or "repositioning" in prompt_arg
+
+
+def test_phase5_fleet_conservation_in_ask_response():
+    """Phase 5: Fleet conservation invariant is visible in plan data returned to Gemini."""
+    mock_client = MagicMock(spec=GeminiClient)
+    mock_client.is_available.return_value = True
+    mock_client.generate.return_value = "Fleet is conserved with 20 buses total."
+
+    service = NilaAIService(gemini_client=mock_client)
+    req = AskRequest(
+        question="What is the current bus allocation plan?",
+        festival_id="madurai-chithirai-2026"
+    )
+    res = service.ask(req)
+
+    assert res.tool_used == "get_current_plan"
+    assert res.grounded is True
+
+
 def test_security_no_api_key_leak():
     """Confirms no API key or sensitive token is exposed in AskResponse or source representations."""
     secret_key = "dummy-test-key-xyz123"

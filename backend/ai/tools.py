@@ -1,7 +1,8 @@
 """
 NILA AI Tools Module
 Authoritative backend tool registry providing ground truth data to Gemini.
-Reuses PredictionEngine and SimulationEngine. Never invents numbers.
+Reuses PredictionEngine, SimulationEngine, and the Phase 4 FixedFleetOptimizer.
+Never invents numbers. All data originates from deterministic backend engines.
 Owned by: Gugaan
 """
 
@@ -11,6 +12,7 @@ from backend.prediction.engine import PredictionEngine
 from backend.prediction.data_loader import get_festival, DataLoaderError
 from backend.simulation.models import SimulationInput, ScenarioParameters
 from backend.simulation.engine import SimulationEngine
+from backend.optimization.engine import optimize_transport, get_plan_tradeoffs
 from backend.ai.schemas import ToolExecutionResult
 
 
@@ -223,38 +225,138 @@ class NilaTools:
 
     def get_current_plan(self, festival_id: str) -> ToolExecutionResult:
         """
-        Adapter interface for the upcoming OptimizationEngine.
-        Does NOT invent fake optimization schedules.
+        Runs the Phase 4 FixedFleetOptimizer using real prediction data for the festival.
+        Returns the authoritative bus redistribution plan.
+        Never invents bus counts, departure times, or allocation figures.
         """
-        return ToolExecutionResult(
-            tool_name="get_current_plan",
-            status="unavailable",
-            data={
-                "festival_id": festival_id,
-                "plan_available": False,
-                "message": (
-                    "No active bus redistribution plan computed. The optimization engine "
-                    "(Phase 4 / Sanjay) enforces the fixed-fleet constraint to schedule bus movements."
-                )
+        try:
+            festival = get_festival(festival_id)
+
+            # Build current allocation from festival stop definitions
+            current_allocation: Dict[str, int] = {
+                s.id: s.current_buses for s in festival.stops
             }
-        )
+            total_fleet = festival.default_fleet_size
+
+            # Run prediction to get per-stop demand forecast
+            pred_config = PredictionInput(festival_id=festival_id)
+            pred_result = self.prediction_engine.predict(pred_config)
+
+            # Build per-stop peak demand for the optimizer
+            stop_demand: Dict[str, int] = {}
+            for sf in pred_result.stop_forecast:
+                s_id = sf.stop_id
+                if s_id not in stop_demand or sf.arrivals > stop_demand[s_id]:
+                    stop_demand[s_id] = sf.arrivals
+
+            # Run the deterministic optimizer — no numbers invented
+            plan = optimize_transport(
+                festival_id=festival_id,
+                total_fleet_size=total_fleet,
+                current_allocation=current_allocation,
+                predicted_demand_profile=stop_demand,
+                use_synthetic_capacity_fallback=True,
+            )
+
+            moves_summary = [
+                {
+                    "source_stop": m.source_stop,
+                    "destination_stop": m.destination_stop,
+                    "buses_to_transfer": m.buses_to_transfer,
+                    "departure_time": m.departure_time,
+                    "arrival_time": m.arrival_time,
+                    "travel_time_minutes": m.travel_time_minutes,
+                    "source_service_loss": m.source_service_loss,
+                    "expected_benefit": m.expected_benefit,
+                    "network_effect": m.network_effect,
+                }
+                for m in plan.repositioning_moves
+            ]
+
+            data: Dict[str, Any] = {
+                "festival_id": festival_id,
+                "plan_id": plan.plan_id,
+                "plan_available": True,
+                "total_fleet_size": plan.total_fleet_size,
+                "fleet_conserved": plan.fleet_conserved,
+                "repositioning_moves": moves_summary,
+                "final_allocation": plan.final_allocation,
+                "overall_queue_reduction_percentage": plan.overall_queue_reduction_percentage,
+                "unserved_demand_before": plan.unserved_demand_before,
+                "unserved_demand_after": plan.unserved_demand_after,
+                "capacity_provenance": plan.capacity_provenance,
+                "warnings": plan.warnings,
+                "modeled_assumptions": plan.modeled_assumptions,
+                "status": plan.status,
+                "message": plan.message,
+            }
+            return ToolExecutionResult(
+                tool_name="get_current_plan",
+                status="success",
+                data=data
+            )
+        except DataLoaderError as e:
+            return ToolExecutionResult(
+                tool_name="get_current_plan",
+                status="error",
+                error=f"Festival not found: {str(e)}"
+            )
+        except Exception as e:
+            return ToolExecutionResult(
+                tool_name="get_current_plan",
+                status="error",
+                error=f"Optimization engine error: {str(e)}"
+            )
 
     def get_tradeoffs(self, festival_id: str, plan_id: Optional[str] = None) -> ToolExecutionResult:
         """
-        Adapter interface for vehicle repositioning trade-offs.
-        Does NOT invent fake vehicle transfers.
+        Runs the Phase 4 optimizer and extracts structured before/after trade-off data
+        for every vehicle repositioning decision.
+        Never invents wait times, queue figures, or vehicle transfers.
         """
-        return ToolExecutionResult(
-            tool_name="get_tradeoffs",
-            status="unavailable",
-            data={
-                "festival_id": festival_id,
-                "plan_id": plan_id,
-                "tradeoffs_available": False,
-                "message": (
-                    "Fleet movement trade-off data is currently unavailable. "
-                    "When an optimization plan is generated, trade-offs between source service loss "
-                    "and destination queue relief will be reported."
-                )
+        try:
+            festival = get_festival(festival_id)
+
+            current_allocation: Dict[str, int] = {
+                s.id: s.current_buses for s in festival.stops
             }
-        )
+            total_fleet = festival.default_fleet_size
+
+            pred_config = PredictionInput(festival_id=festival_id)
+            pred_result = self.prediction_engine.predict(pred_config)
+
+            stop_demand: Dict[str, int] = {}
+            for sf in pred_result.stop_forecast:
+                s_id = sf.stop_id
+                if s_id not in stop_demand or sf.arrivals > stop_demand[s_id]:
+                    stop_demand[s_id] = sf.arrivals
+
+            plan = optimize_transport(
+                festival_id=festival_id,
+                total_fleet_size=total_fleet,
+                current_allocation=current_allocation,
+                predicted_demand_profile=stop_demand,
+                use_synthetic_capacity_fallback=True,
+            )
+
+            tradeoff_data = get_plan_tradeoffs(plan)
+            tradeoff_data["festival_id"] = festival_id
+            tradeoff_data["tradeoffs_available"] = len(plan.repositioning_moves) > 0
+
+            return ToolExecutionResult(
+                tool_name="get_tradeoffs",
+                status="success",
+                data=tradeoff_data
+            )
+        except DataLoaderError as e:
+            return ToolExecutionResult(
+                tool_name="get_tradeoffs",
+                status="error",
+                error=f"Festival not found: {str(e)}"
+            )
+        except Exception as e:
+            return ToolExecutionResult(
+                tool_name="get_tradeoffs",
+                status="error",
+                error=f"Trade-off computation error: {str(e)}"
+            )
