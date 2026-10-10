@@ -18,7 +18,7 @@ interface CrowdMapProps {
   festival: Festival;
   stops: Stop[];
   points: CrowdPoint[];
-  move: BusMove;
+  move?: BusMove | null;
   selectedStop: Stop | null;
   onSelectStop: (stop: Stop) => void;
   routeGeometry?: [number, number][] | null;
@@ -93,7 +93,7 @@ export default function CrowdMap({
               center={festival.coordinates}
               stops={filteredStops}
               points={points}
-              route={showRoute ? { from: move.sourceStop, to: move.destinationStop } : null}
+              route={showRoute && move ? { from: move.sourceStop, to: move.destinationStop } : null}
               routeGeometry={routeGeometry}
               showHeatmap={showHeatmap}
               onStopSelect={onSelectStop}
@@ -226,7 +226,7 @@ export default function CrowdMap({
                   </div>
                 </div>
 
-                {selectedStop.id === move.destinationStop && (
+                {move && selectedStop.id === move.destinationStop && (
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
                     <div className="font-bold flex items-center gap-1 mb-0.5">
                       <Bus size={13} /> Receiving {move.buses} Reassigned Buses
@@ -235,7 +235,7 @@ export default function CrowdMap({
                   </div>
                 )}
 
-                {selectedStop.id === move.sourceStop && (
+                {move && selectedStop.id === move.sourceStop && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
                     <div className="font-bold flex items-center gap-1 mb-0.5">
                       <ShieldAlert size={13} /> Donor Terminal (-{move.buses} Buses)

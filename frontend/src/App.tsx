@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Bus,
@@ -39,12 +39,12 @@ import {
   type BusMove,
   type ForecastResponse,
   type OptimizeResponse,
+  type RiskLevel,
   type ScenarioConfig,
   type ScenarioResult,
   type Stop,
   type UIFestival,
 } from './types/nila';
-import { DEMO_POINTS, DEMO_STOPS } from './data/demoFixtures';
 
 import CommandCenter from './pages/CommandCenter';
 import FestivalPlanner from './pages/FestivalPlanner';
@@ -111,7 +111,7 @@ export default function App() {
   const [routeResponse, setRouteResponse] = useState<RouteResponse | null>(null);
 
   // Map & Inspector State
-  const [selectedStop, setSelectedStop] = useState<Stop | null>(DEMO_STOPS[0]);
+  const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
 
   // AI Copilot Chat State
   const [chatInput, setChatInput] = useState('');
@@ -245,9 +245,15 @@ export default function App() {
       const currentAllocation: Record<string, number> = {};
       const predictedDemand: Record<string, number> = {};
 
+      const totalFleet = festivalDetails?.default_fleet_size || 25;
+      const count = stopsList.length || 1;
+      const baseShare = Math.floor(totalFleet / count);
+      const remainder = totalFleet % count;
+
       stopsList.forEach((s, idx) => {
-        currentAllocation[s.id] = idx === 0 ? 5 : idx === 1 ? 5 : 10;
-        predictedDemand[s.id] = idx === 0 ? 4200 : idx === 1 ? 1800 : 600;
+        currentAllocation[s.id] = baseShare + (idx < remainder ? 1 : 0);
+        const sf = predictionResponse?.stop_forecasts?.find((item) => item.stop_id === s.id);
+        predictedDemand[s.id] = sf ? sf.predicted_demand : (idx === 0 ? 4200 : idx === 1 ? 1800 : 600);
       });
 
       const result = await optimizeFleet({
@@ -374,99 +380,171 @@ export default function App() {
   );
 
   // Adapted stops for UI rendering from real festival details
-  const currentStops: Stop[] =
-    festivalDetails?.stops && festivalDetails.stops.length > 0
-      ? festivalDetails.stops.map((bs: BackendStop) => {
-          const isCritical = predictionResponse?.highest_demand_stops?.includes(bs.id);
-          return {
-            id: bs.id,
-            name: bs.name,
-            shortName: bs.name.replace(' Bus Stand', '').replace(' Terminal', ''),
-            coordinates: [bs.coordinates.lng, bs.coordinates.lat],
-            capacity: bs.capacity,
-            currentBuses: optimizationResponse?.final_allocation?.[bs.id] ?? 5,
-            recommendedBuses: optimizationResponse?.final_allocation?.[bs.id] ?? 5,
-            crowd: isCritical ? Math.round(bs.capacity * 1.5) : Math.round(bs.capacity * 0.7),
-            waitMinutes: isCritical ? 45 : 15,
-            risk: isCritical ? 'CRITICAL' : 'MODERATE',
-          };
-        })
-      : DEMO_STOPS;
+  const currentStops: Stop[] = useMemo(() => {
+    if (!festivalDetails?.stops || festivalDetails.stops.length === 0) {
+      return [];
+    }
+    const defaultFleet = festivalDetails.default_fleet_size || 25;
+    const baseShare = Math.floor(defaultFleet / festivalDetails.stops.length);
+    return festivalDetails.stops.map((bs: BackendStop) => {
+      const isCritical = predictionResponse?.highest_demand_stops?.includes(bs.id);
+      const stopForecast = predictionResponse?.stop_forecasts?.find((sf) => sf.stop_id === bs.id);
+      const allocatedBuses = optimizationResponse?.final_allocation?.[bs.id] ?? baseShare;
+      const demand = stopForecast?.predicted_demand ?? (isCritical ? Math.round(bs.capacity * 1.5) : Math.round(bs.capacity * 0.7));
+      const waitMin = stopForecast?.waiting_minutes ? Math.round(stopForecast.waiting_minutes) : (isCritical ? 45 : 15);
+      const risk = (stopForecast?.risk_level as RiskLevel) || (isCritical ? 'CRITICAL' : 'MODERATE');
+
+      return {
+        id: bs.id,
+        name: bs.name,
+        shortName: bs.name.replace(' Bus Stand', '').replace(' Terminal', ''),
+        coordinates: [bs.coordinates.lng, bs.coordinates.lat],
+        capacity: bs.capacity,
+        currentBuses: allocatedBuses,
+        recommendedBuses: allocatedBuses,
+        crowd: demand,
+        waitMinutes: waitMin,
+        risk: risk,
+      };
+    });
+  }, [festivalDetails, predictionResponse, optimizationResponse]);
 
   // Adapted active repositioning move
-  const activeMove: BusMove = optimizationResponse?.repositioning_moves?.[0]
-    ? {
-        sourceStop: optimizationResponse.repositioning_moves[0].source_stop,
-        destinationStop: optimizationResponse.repositioning_moves[0].destination_stop,
-        buses: optimizationResponse.repositioning_moves[0].buses_to_transfer,
-        departure: optimizationResponse.repositioning_moves[0].departure_time,
-        arrival: optimizationResponse.repositioning_moves[0].arrival_time,
-        travelMinutes: optimizationResponse.repositioning_moves[0].travel_time_minutes,
-        waitReduction: 26,
-        benefit: optimizationResponse.repositioning_moves[0].expected_benefit,
-        tradeoff: optimizationResponse.repositioning_moves[0].source_service_loss,
-        networkEffect: optimizationResponse.repositioning_moves[0].network_effect,
-      }
-    : {
-        sourceStop: currentStops[2]?.id || 'stop-mattuthavani',
-        destinationStop: currentStops[0]?.id || 'stop-periyar',
-        buses: 4,
-        departure: '09:15 AM',
-        arrival: '09:40 AM',
-        travelMinutes: 25,
-        waitReduction: 26,
-        benefit: 'Reduces queue pressure at peak egress terminal',
-        tradeoff: 'Origin standby buffer reduced',
-        networkEffect: '+3,200 passengers cleared before peak',
-      };
+  const activeMove: BusMove | null = useMemo(() => {
+    const move = optimizationResponse?.repositioning_moves?.[0];
+    if (!move) return null;
+    return {
+      sourceStop: move.source_stop,
+      destinationStop: move.destination_stop,
+      buses: move.buses_to_transfer,
+      departure: move.departure_time,
+      arrival: move.arrival_time,
+      travelMinutes: move.travel_time_minutes,
+      waitReduction: 26,
+      benefit: move.expected_benefit,
+      tradeoff: move.source_service_loss,
+      networkEffect: move.network_effect,
+    };
+  }, [optimizationResponse]);
 
   // Adapted forecast metrics for UI
-  const adaptedForecast: ForecastResponse = {
-    source: predictionResponse ? 'api' : 'demo',
-    metrics: {
-      peakCrowd: predictionResponse?.timeline?.[0]?.total_crowd_estimate ?? 450000,
-      peakTime: predictionResponse?.peak_surge_time ?? '10:30 AM',
-      waitingMinutes: 32,
-      overloadedStops: predictionResponse?.highest_demand_stops?.length ?? 2,
-      risk: (predictionResponse?.timeline?.[0]?.surge_alert_level as 'LOW' | 'MEDIUM' | 'MODERATE' | 'HIGH' | 'CRITICAL') ?? 'HIGH',
-    },
-    points: simulationResponse?.steps?.[0]?.density_grid?.map((pt) => ({
-      coordinates: [pt.longitude, pt.latitude] as [number, number],
-      weight: pt.weight,
-    })) || DEMO_POINTS,
-    stops: currentStops,
-  };
+  const adaptedForecast: ForecastResponse = useMemo(() => {
+    if (!predictionResponse) {
+      return {
+        source: 'not_run',
+        metrics: {
+          peakCrowd: 0,
+          peakTime: 'Not Run',
+          waitingMinutes: 0,
+          overloadedStops: 0,
+          risk: 'LOW',
+        },
+        points: [],
+        stops: currentStops,
+      };
+    }
+    const peakCrowd = predictionResponse.peak_crowd ?? (predictionResponse.timeline?.reduce((max, t) => Math.max(max, t.total_crowd_estimate), 0) || 0);
+    const avgWait = predictionResponse.stop_forecasts?.length
+      ? Math.round(predictionResponse.stop_forecasts.reduce((sum, sf) => sum + sf.waiting_minutes, 0) / predictionResponse.stop_forecasts.length)
+      : 15;
+    const peakAlert = (predictionResponse.timeline?.find((t) => t.timestamp === predictionResponse.peak_surge_time)?.surge_alert_level as RiskLevel) ?? 'HIGH';
+
+    return {
+      source: 'api',
+      metrics: {
+        peakCrowd,
+        peakTime: predictionResponse.peak_surge_time,
+        waitingMinutes: avgWait,
+        overloadedStops: predictionResponse.highest_demand_stops?.length ?? 0,
+        risk: peakAlert,
+      },
+      points: simulationResponse?.steps?.[0]?.density_grid?.map((pt) => ({
+        coordinates: [pt.longitude, pt.latitude] as [number, number],
+        weight: pt.weight,
+      })) || currentStops.map((s) => ({ coordinates: s.coordinates, weight: s.crowd / Math.max(1, s.capacity) })),
+      stops: currentStops,
+      timeline: predictionResponse.timeline?.map((t) => ({
+        timestamp: t.timestamp,
+        total_crowd_estimate: t.total_crowd_estimate,
+        discharge_rate_per_hour: t.discharge_rate_per_hour,
+        surge_alert_level: t.surge_alert_level as RiskLevel,
+      })),
+    };
+  }, [predictionResponse, simulationResponse, currentStops]);
 
   // Adapted optimization for UI
-  const adaptedOptimization: OptimizeResponse = {
-    source: optimizationResponse ? 'api' : 'demo',
-    plan_id: optimizationResponse?.plan_id || 'opt-plan-initial',
-    total_fleet_size: optimizationResponse?.total_fleet_size || festivalDetails?.default_fleet_size || 25,
-    fleet_conserved: optimizationResponse?.fleet_conserved ?? true,
-    move: activeMove,
-    overall_queue_reduction_percentage:
-      optimizationResponse?.overall_queue_reduction_percentage ?? 58.4,
-    final_allocation: optimizationResponse?.final_allocation,
-  };
+  const adaptedOptimization: OptimizeResponse = useMemo(() => {
+    if (!optimizationResponse) {
+      return {
+        source: 'not_run',
+        plan_id: 'pending-run',
+        total_fleet_size: festivalDetails?.default_fleet_size || 25,
+        fleet_conserved: true,
+        move: null,
+        overall_queue_reduction_percentage: 0,
+      };
+    }
+    return {
+      source: 'api',
+      plan_id: optimizationResponse.plan_id,
+      total_fleet_size: optimizationResponse.total_fleet_size,
+      fleet_conserved: optimizationResponse.fleet_conserved,
+      move: activeMove,
+      overall_queue_reduction_percentage: optimizationResponse.overall_queue_reduction_percentage,
+      final_allocation: optimizationResponse.final_allocation,
+    };
+  }, [optimizationResponse, festivalDetails, activeMove]);
 
   // Adapted scenario result for UI
-  const adaptedScenario: ScenarioResult = {
-    source: simulationResponse ? 'api' : 'demo',
-    baseline: {
-      peakCrowd: 500000,
-      peakTime: '10:30 AM',
-      waitingMinutes: 34,
-      queue: 8770,
-      risk: 'HIGH',
-    },
-    scenario: {
-      peakCrowd: Math.round(500000 * (config.attendance / 100)),
-      peakTime: config.delayMinutes > 0 ? `10:${30 + config.delayMinutes} AM` : '10:30 AM',
-      waitingMinutes: Math.round(34 * (config.attendance / 100) * (config.rain > 50 ? 1.25 : 1)),
-      queue: Math.round(8770 * (config.attendance / 100)),
-      risk: config.attendance > 120 || config.rain > 50 ? 'CRITICAL' : 'HIGH',
-    },
-  };
+  const adaptedScenario: ScenarioResult = useMemo(() => {
+    if (!simulationResponse) {
+      return {
+        source: 'not_run',
+        baseline: {
+          peakCrowd: 0,
+          peakTime: 'Pending Run',
+          waitingMinutes: 0,
+          queue: 0,
+          risk: 'LOW',
+        },
+        scenario: {
+          peakCrowd: 0,
+          peakTime: 'Pending Run',
+          waitingMinutes: 0,
+          queue: 0,
+          risk: 'LOW',
+        },
+      };
+    }
+    const b = (simulationResponse as any).baseline;
+    const s = (simulationResponse as any).scenario;
+    const stopComps = (simulationResponse as any).stop_comparisons as Array<any> | undefined;
+
+    const bQueue = stopComps ? stopComps.reduce((sum, sc) => sum + (sc.baseline_queue || 0), 0) : 0;
+    const sQueue = stopComps ? stopComps.reduce((sum, sc) => sum + (sc.scenario_queue || 0), 0) : 0;
+    const bBuses = stopComps ? stopComps.reduce((sum, sc) => sum + (sc.baseline_required_buses || 0), 0) : 10;
+    const sBuses = stopComps ? stopComps.reduce((sum, sc) => sum + (sc.scenario_required_buses || 0), 0) : 10;
+    const bWait = bQueue > 0 ? Math.round((bQueue / Math.max(1, bBuses * 50)) * 15) : 15;
+    const sWait = sQueue > 0 ? Math.round((sQueue / Math.max(1, sBuses * 50)) * 15) : 20;
+
+    return {
+      source: 'api',
+      baseline: {
+        peakCrowd: b?.peak_crowd ?? 0,
+        peakTime: b?.peak_time ?? '10:00 AM',
+        waitingMinutes: bWait,
+        queue: bQueue,
+        risk: (b?.overall_risk_level as RiskLevel) || 'MODERATE',
+      },
+      scenario: {
+        peakCrowd: s?.peak_crowd ?? 0,
+        peakTime: s?.peak_time ?? '10:00 AM',
+        waitingMinutes: sWait,
+        queue: sQueue,
+        risk: (s?.overall_risk_level as RiskLevel) || 'HIGH',
+      },
+    };
+  }, [simulationResponse]);
 
   // Active festival presentation object
   const matchedBackend = festivals.find((f) => f.id === selectedFestivalId);

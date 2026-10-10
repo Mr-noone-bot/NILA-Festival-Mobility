@@ -11,34 +11,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { BusMove, OptimizeResponse, Stop } from '../types/nila';
-import { DEMO_STOPS } from '../data/demoFixtures';
 import { formatNumber, riskLabel, toRiskClass } from '../utils/format';
-
-const FALLBACK_SOURCE_STOP: Stop = {
-  id: 'stop-mattuthavani',
-  name: 'Mattuthavani (MIBT Integrated)',
-  shortName: 'Mattuthavani',
-  coordinates: [78.1561, 9.9482],
-  capacity: 3000,
-  currentBuses: 10,
-  recommendedBuses: 6,
-  crowd: 600,
-  waitMinutes: 8,
-  risk: 'LOW',
-};
-
-const FALLBACK_DEST_STOP: Stop = {
-  id: 'stop-periyar',
-  name: 'Periyar Bus Stand',
-  shortName: 'Periyar Stand',
-  coordinates: [78.1132, 9.9167],
-  capacity: 1500,
-  currentBuses: 5,
-  recommendedBuses: 9,
-  crowd: 4200,
-  waitMinutes: 48,
-  risk: 'CRITICAL',
-};
 
 interface BusAllocationProps {
   optimization: OptimizeResponse;
@@ -55,33 +28,15 @@ export default function BusAllocation({
   optimizeStatus,
   optimizeMessage,
 }: BusAllocationProps) {
-  const move: BusMove = optimization?.move || {
-    sourceStop: 'stop-mattuthavani',
-    destinationStop: 'stop-periyar',
-    buses: 4,
-    departure: '09:15 AM',
-    arrival: '09:40 AM',
-    travelMinutes: 25,
-    waitReduction: 26,
-    benefit: 'Eliminates critical queue hazard at Periyar (-62% wait time reduction)',
-    tradeoff: 'Minor wait time increase at Mattuthavani (+4 min), well within safe buffer',
-    networkEffect: '+3,200 passengers cleared before 10:30 AM peak egress',
-  };
+  const move: BusMove | null = optimization?.move ?? null;
 
-  const sourceStop: Stop =
-    stops.find((s) => s.id === move.sourceStop) ??
-    DEMO_STOPS.find((s) => s.id === move.sourceStop) ??
-    stops[2] ??
-    stops[0] ??
-    DEMO_STOPS[2] ??
-    FALLBACK_SOURCE_STOP;
+  const sourceStop: Stop | undefined = move
+    ? stops.find((s) => s.id === move.sourceStop) ?? stops[0]
+    : undefined;
 
-  const destinationStop: Stop =
-    stops.find((s) => s.id === move.destinationStop) ??
-    DEMO_STOPS.find((s) => s.id === move.destinationStop) ??
-    stops[0] ??
-    DEMO_STOPS[0] ??
-    FALLBACK_DEST_STOP;
+  const destinationStop: Stop | undefined = move
+    ? stops.find((s) => s.id === move.destinationStop) ?? stops[1]
+    : undefined;
 
   const totalBuses =
     stops.reduce((sum, s) => sum + s.currentBuses, 0) ||
@@ -141,11 +96,13 @@ export default function BusAllocation({
         </div>
       </div>
 
-      {/* Central Visual Repositioning Flow Diagram */}
-      <div className="bg-white border border-sky-200 rounded-2xl p-6 shadow-sm">
-        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-          Recommended Vehicle Reassignment Flow
-        </div>
+      {/* Central Visual Repositioning Flow Diagram & Trade-Off Cards */}
+      {move && sourceStop && destinationStop ? (
+        <>
+          <div className="bg-white border border-sky-200 rounded-2xl p-6 shadow-sm">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
+              Recommended Vehicle Reassignment Flow
+            </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {/* Source Stop Card */}
@@ -334,6 +291,24 @@ export default function BusAllocation({
           </ul>
         </div>
       </div>
+    </>
+  ) : (
+    <div className="bg-white border border-sky-200 rounded-2xl p-6 shadow-sm text-center">
+      <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mx-auto mb-3">
+        <Bus size={28} />
+      </div>
+      <h3 className="text-base font-bold text-slate-900">
+        {optimization?.source === 'not_run'
+          ? 'Fleet Optimization Pending'
+          : 'Current Allocation Optimal — No Repositioning Required'}
+      </h3>
+      <p className="text-xs text-slate-600 mt-1 max-w-lg mx-auto">
+        {optimization?.source === 'not_run'
+          ? 'Click "Generate Optimization Plan" above to calculate optimal vehicle reallocation under the fixed-fleet invariant.'
+          : 'All monitored stops have balanced supply relative to predicted crowd demand. No bus relocation transfers are required.'}
+      </p>
+    </div>
+  )}
 
       {/* Network Overview Table */}
       <div className="bg-white border border-sky-100 rounded-2xl p-6 shadow-sm space-y-4">
@@ -371,14 +346,10 @@ export default function BusAllocation({
                 </tr>
               ) : (
                 stops.map((stop) => {
-                  const isSource = stop.id === move.sourceStop;
-                  const isDest = stop.id === move.destinationStop;
-                  const netChange = isDest ? `+${move.buses}` : isSource ? `-${move.buses}` : '0';
-                  const finalCount = isDest
-                    ? stop.currentBuses + move.buses
-                    : isSource
-                      ? stop.currentBuses - move.buses
-                      : stop.currentBuses;
+                  const isSource = move ? stop.id === move.sourceStop : false;
+                  const isDest = move ? stop.id === move.destinationStop : false;
+                  const netChange = isDest ? `+${move!.buses}` : isSource ? `-${move!.buses}` : '0';
+                  const finalCount = optimization.final_allocation?.[stop.id] ?? stop.currentBuses;
 
                   return (
                     <tr

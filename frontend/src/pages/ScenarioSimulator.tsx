@@ -30,55 +30,59 @@ export default function ScenarioSimulator({
   scenarioStatus,
   scenarioMessage,
 }: ScenarioSimulatorProps) {
+  const isRun = scenario.source === 'api';
   const comparisonRows = [
     {
       label: 'Peak Crowd Inflow',
-      baseline: formatNumber(scenario.baseline.peakCrowd),
-      scenarioVal: formatNumber(scenario.scenario.peakCrowd),
+      baseline: isRun ? formatNumber(scenario.baseline.peakCrowd) : '—',
+      scenarioVal: isRun ? formatNumber(scenario.scenario.peakCrowd) : '—',
       unit: 'devotees',
-      delta:
-        scenario.scenario.peakCrowd !== scenario.baseline.peakCrowd
-          ? `+${Math.round(
+      delta: !isRun
+        ? 'Pending'
+        : scenario.scenario.peakCrowd !== scenario.baseline.peakCrowd && scenario.baseline.peakCrowd > 0
+          ? `${scenario.scenario.peakCrowd > scenario.baseline.peakCrowd ? '+' : ''}${Math.round(
               ((scenario.scenario.peakCrowd - scenario.baseline.peakCrowd) /
                 scenario.baseline.peakCrowd) *
                 100
             )}%`
           : '0%',
-      worse: scenario.scenario.peakCrowd > scenario.baseline.peakCrowd,
+      worse: isRun && scenario.scenario.peakCrowd > scenario.baseline.peakCrowd,
     },
     {
       label: 'Surge Peak Window',
-      baseline: scenario.baseline.peakTime,
-      scenarioVal: scenario.scenario.peakTime,
+      baseline: isRun ? scenario.baseline.peakTime : '—',
+      scenarioVal: isRun ? scenario.scenario.peakTime : '—',
       unit: 'local time',
-      delta: config.delayMinutes > 0 ? `+${config.delayMinutes}m delay` : 'On schedule',
-      worse: scenario.scenario.peakTime !== scenario.baseline.peakTime,
+      delta: !isRun ? 'Pending' : config.delayMinutes > 0 ? `+${config.delayMinutes}m delay` : 'On schedule',
+      worse: isRun && scenario.scenario.peakTime !== scenario.baseline.peakTime,
     },
     {
       label: 'Average Passenger Wait',
-      baseline: `${scenario.baseline.waitingMinutes} min`,
-      scenarioVal: `${scenario.scenario.waitingMinutes} min`,
+      baseline: isRun ? `${scenario.baseline.waitingMinutes} min` : '—',
+      scenarioVal: isRun ? `${scenario.scenario.waitingMinutes} min` : '—',
       unit: 'queue duration',
-      delta:
-        scenario.scenario.waitingMinutes > scenario.baseline.waitingMinutes
+      delta: !isRun
+        ? 'Pending'
+        : scenario.scenario.waitingMinutes > scenario.baseline.waitingMinutes
           ? `+${scenario.scenario.waitingMinutes - scenario.baseline.waitingMinutes} min`
           : 'Normal',
-      worse: scenario.scenario.waitingMinutes > scenario.baseline.waitingMinutes,
+      worse: isRun && scenario.scenario.waitingMinutes > scenario.baseline.waitingMinutes,
     },
     {
       label: 'Accumulated Stop Queues',
-      baseline: `${formatNumber(scenario.baseline.queue)} pax`,
-      scenarioVal: `${formatNumber(scenario.scenario.queue)} pax`,
+      baseline: isRun ? `${formatNumber(scenario.baseline.queue)} pax` : '—',
+      scenarioVal: isRun ? `${formatNumber(scenario.scenario.queue)} pax` : '—',
       unit: 'across choke points',
-      delta:
-        scenario.scenario.queue > scenario.baseline.queue
+      delta: !isRun
+        ? 'Pending'
+        : scenario.scenario.queue > scenario.baseline.queue && scenario.baseline.queue > 0
           ? `+${Math.round(
               ((scenario.scenario.queue - scenario.baseline.queue) /
                 scenario.baseline.queue) *
                 100
             )}% backlog`
           : 'Stable',
-      worse: scenario.scenario.queue > scenario.baseline.queue,
+      worse: isRun && scenario.scenario.queue > scenario.baseline.queue,
     },
   ];
 

@@ -18,7 +18,6 @@ import {
   Waves,
 } from 'lucide-react';
 import MapCanvas from '../components/MapCanvas';
-import { DEMO_STOPS } from '../data/demoFixtures';
 import type {
   BusMove,
   Festival,
@@ -27,32 +26,6 @@ import type {
   Stop,
 } from '../types/nila';
 import { formatNumber, riskLabel, toRiskClass } from '../utils/format';
-
-const FALLBACK_SOURCE_STOP: Stop = {
-  id: 'stop-mattuthavani',
-  name: 'Mattuthavani (MIBT Integrated)',
-  shortName: 'Mattuthavani',
-  coordinates: [78.1561, 9.9482],
-  capacity: 3000,
-  currentBuses: 10,
-  recommendedBuses: 6,
-  crowd: 600,
-  waitMinutes: 8,
-  risk: 'LOW',
-};
-
-const FALLBACK_DEST_STOP: Stop = {
-  id: 'stop-periyar',
-  name: 'Periyar Bus Stand',
-  shortName: 'Periyar Stand',
-  coordinates: [78.1132, 9.9167],
-  capacity: 1500,
-  currentBuses: 5,
-  recommendedBuses: 9,
-  crowd: 4200,
-  waitMinutes: 48,
-  risk: 'CRITICAL',
-};
 
 interface CommandCenterProps {
   festival: Festival;
@@ -88,71 +61,55 @@ export default function CommandCenter({
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [routeVisible, setRouteVisible] = useState(true);
 
-  const activeMove: BusMove = optimization?.move || {
-    sourceStop: 'stop-mattuthavani',
-    destinationStop: 'stop-periyar',
-    buses: 4,
-    departure: '09:15 AM',
-    arrival: '09:40 AM',
-    travelMinutes: 25,
-    waitReduction: 26,
-    benefit: 'Reduces queue pressure at peak egress terminal',
-    tradeoff: 'Origin standby buffer reduced',
-    networkEffect: '+3,200 passengers cleared before peak',
-  };
+  const activeMove: BusMove | null = optimization?.move ?? null;
 
-  const sourceStop: Stop =
-    stops.find((s) => s.id === activeMove.sourceStop) ??
-    DEMO_STOPS.find((s) => s.id === activeMove.sourceStop) ??
-    stops[2] ??
-    stops[0] ??
-    DEMO_STOPS[2] ??
-    FALLBACK_SOURCE_STOP;
+  const sourceStop: Stop | undefined = activeMove
+    ? stops.find((s) => s.id === activeMove.sourceStop) ?? stops[0]
+    : undefined;
 
-  const destinationStop: Stop =
-    stops.find((s) => s.id === activeMove.destinationStop) ??
-    DEMO_STOPS.find((s) => s.id === activeMove.destinationStop) ??
-    stops[0] ??
-    DEMO_STOPS[0] ??
-    FALLBACK_DEST_STOP;
+  const destinationStop: Stop | undefined = activeMove
+    ? stops.find((s) => s.id === activeMove.destinationStop) ?? stops[1]
+    : undefined;
 
   const totalBuses =
     stops.reduce((sum, s) => sum + s.currentBuses, 0) ||
     optimization?.total_fleet_size ||
     25;
 
+  const isForecastRun = forecast?.source === 'api';
+
   const metrics = [
     {
       label: 'Peak Crowd Estimate',
-      value: formatNumber(forecast?.metrics?.peakCrowd ?? 450000),
-      unit: 'pilgrims projected',
+      value: isForecastRun ? formatNumber(forecast.metrics.peakCrowd) : 'Not Run',
+      unit: isForecastRun ? 'pilgrims projected' : 'Click "Run Forecast"',
       icon: Users,
-      trend: '+12% vs avg',
-      direction: 'up',
+      trend: isForecastRun ? 'Calculated' : 'Pending',
+      direction: isForecastRun ? 'up' : 'neutral',
     },
     {
       label: 'Peak Surge Window',
-      value: forecast?.metrics?.peakTime ?? '10:30 AM',
-      unit: 'post-ritual mass exit',
+      value: isForecastRun ? forecast.metrics.peakTime : 'Pending Run',
+      unit: isForecastRun ? 'post-ritual egress window' : 'Awaiting calculation',
       icon: Clock3,
-      trend: 'Milestone surge',
+      trend: isForecastRun ? 'Peak window' : 'Pending',
       direction: 'neutral',
     },
     {
       label: 'Average Wait Time',
-      value: `${forecast?.metrics?.waitingMinutes ?? 32} min`,
-      unit: 'across monitored stops',
+      value: isForecastRun ? `${forecast.metrics.waitingMinutes} min` : '—',
+      unit: isForecastRun ? 'across monitored stops' : 'Awaiting forecast',
       icon: Waves,
-      trend: '-6 min post-opt',
+      trend: isForecastRun ? `${forecast.metrics.waitingMinutes}m avg` : 'Pending',
       direction: 'down',
     },
     {
       label: 'Stops Under Critical Pressure',
-      value: `${forecast?.metrics?.overloadedStops ?? 2} of ${stops.length}`,
-      unit: 'immediate attention',
+      value: isForecastRun ? `${forecast.metrics.overloadedStops} of ${stops.length}` : '—',
+      unit: isForecastRun ? 'immediate attention' : 'Awaiting forecast',
       icon: ShieldAlert,
-      trend: 'Periyar highest',
-      direction: 'up',
+      trend: isForecastRun ? `${forecast.metrics.risk} alert` : 'Pending',
+      direction: isForecastRun ? 'up' : 'neutral',
     },
   ];
 
@@ -496,53 +453,71 @@ export default function CommandCenter({
         </div>
 
         {/* Visual Movement Flow */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center my-6 py-2">
-          {/* Source Stop */}
-          <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50">
-            <div className="text-[11px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500" /> SOURCE TERMINAL (REDUCED)
+        {activeMove && sourceStop && destinationStop ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center my-6 py-2">
+            {/* Source Stop */}
+            <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/50">
+              <div className="text-[11px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500" /> SOURCE TERMINAL (REDUCED)
+              </div>
+              <h4 className="text-base font-bold text-slate-900 mt-1">{sourceStop.name}</h4>
+              <div className="text-xs text-slate-600 mt-1">
+                Current fleet: <span className="font-bold text-slate-900">{sourceStop.currentBuses} buses</span> →
+                After move: <span className="font-bold text-amber-700">{sourceStop.currentBuses - activeMove.buses} buses</span>
+              </div>
+              <div className="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 font-medium">
+                Service Sacrifice: {activeMove.tradeoff}
+              </div>
             </div>
-            <h4 className="text-base font-bold text-slate-900 mt-1">{sourceStop.name}</h4>
-            <div className="text-xs text-slate-600 mt-1">
-              Current fleet: <span className="font-bold text-slate-900">{sourceStop.currentBuses} buses</span> →
-              After move: <span className="font-bold text-amber-700">{sourceStop.currentBuses - activeMove.buses} buses</span>
-            </div>
-            <div className="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 font-medium">
-              Service Sacrifice: {activeMove.tradeoff}
-            </div>
-          </div>
 
-          {/* Transfer Arrow & Stats */}
-          <div className="text-center p-3 rounded-xl bg-gradient-to-r from-sky-50 via-sky-100/70 to-sky-50 border border-sky-200 flex flex-col items-center justify-center">
-            <div className="w-10 h-10 rounded-full bg-sky-600 text-white flex items-center justify-center shadow-md mb-2">
-              <Bus size={20} />
+            {/* Transfer Arrow & Stats */}
+            <div className="text-center p-3 rounded-xl bg-gradient-to-r from-sky-50 via-sky-100/70 to-sky-50 border border-sky-200 flex flex-col items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-sky-600 text-white flex items-center justify-center shadow-md mb-2">
+                <Bus size={20} />
+              </div>
+              <div className="text-base font-black text-sky-900">
+                REPOSITION {activeMove.buses} BUSES
+              </div>
+              <div className="text-xs font-semibold text-slate-600 mt-0.5">
+                Departs {activeMove.departure} · Arrives {activeMove.arrival} ({activeMove.travelMinutes} mins transit)
+              </div>
+              <div className="text-[11px] text-emerald-700 font-bold mt-1.5">
+                Relief Benefit: -{activeMove.waitReduction} min queue wait
+              </div>
             </div>
-            <div className="text-base font-black text-sky-900">
-              REPOSITION {activeMove.buses} BUSES
-            </div>
-            <div className="text-xs font-semibold text-slate-600 mt-0.5">
-              Departs {activeMove.departure} · Arrives {activeMove.arrival} ({activeMove.travelMinutes} mins transit)
-            </div>
-            <div className="text-[11px] text-emerald-700 font-bold mt-1.5">
-              Relief Benefit: -{activeMove.waitReduction} min queue wait
-            </div>
-          </div>
 
-          {/* Destination Stop */}
-          <div className="p-4 rounded-xl border border-sky-300 bg-sky-100/40">
-            <div className="text-[11px] font-bold text-sky-800 uppercase flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> DESTINATION TERMINAL (REINFORCED)
-            </div>
-            <h4 className="text-base font-bold text-slate-900 mt-1">{destinationStop.name}</h4>
-            <div className="text-xs text-slate-600 mt-1">
-              Current fleet: <span className="font-bold text-slate-900">{destinationStop.currentBuses} buses</span> →
-              Reinforced: <span className="font-bold text-emerald-700">{destinationStop.currentBuses + activeMove.buses} buses</span>
-            </div>
-            <div className="mt-2 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 font-medium">
-              Expected Relief: {activeMove.benefit}
+            {/* Destination Stop */}
+            <div className="p-4 rounded-xl border border-sky-300 bg-sky-100/40">
+              <div className="text-[11px] font-bold text-sky-800 uppercase flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" /> DESTINATION TERMINAL (REINFORCED)
+              </div>
+              <h4 className="text-base font-bold text-slate-900 mt-1">{destinationStop.name}</h4>
+              <div className="text-xs text-slate-600 mt-1">
+                Current fleet: <span className="font-bold text-slate-900">{destinationStop.currentBuses} buses</span> →
+                Reinforced: <span className="font-bold text-emerald-700">{destinationStop.currentBuses + activeMove.buses} buses</span>
+              </div>
+              <div className="mt-2 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 font-medium">
+                Expected Relief: {activeMove.benefit}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="my-6 p-6 rounded-xl border border-dashed border-sky-300 bg-sky-50/40 text-center">
+            <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto mb-3">
+              <Bus size={22} />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800">
+              {optimization?.source === 'not_run'
+                ? 'Optimization Plan Pending'
+                : 'Current Allocation Optimal — No Repositioning Required'}
+            </h4>
+            <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto">
+              {optimization?.source === 'not_run'
+                ? 'Click "Re-Run Optimizer" above to compute time-aware zero-sum vehicle redistribution using real demand estimates.'
+                : 'Current fleet allocation meets projected peak demands across all terminals without triggering congestion bottlenecks.'}
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
           <div>

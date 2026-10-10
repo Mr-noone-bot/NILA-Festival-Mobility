@@ -11,8 +11,9 @@ export async function getHealth(): Promise<HealthResponse> {
 /**
  * Retrieves the catalog of supported Tamil Nadu temple festivals via GET /api/festivals
  */
-export async function getFestivals(): Promise<Festival[]> {
-  const result = await apiClient<Festival[]>('/api/festivals');
+export async function getFestivals(includeSynthetic: boolean = true): Promise<Festival[]> {
+  const query = includeSynthetic ? '?include_synthetic=true' : '';
+  const result = await apiClient<Festival[]>(`/api/festivals${query}`);
   if (!Array.isArray(result)) {
     throw new Error('Expected festival catalog array from GET /api/festivals');
   }
@@ -22,9 +23,13 @@ export async function getFestivals(): Promise<Festival[]> {
 /**
  * Retrieves detailed festival metadata, gates, nearby stops, and fleet size via GET /api/festivals/{festival_id}
  */
-export async function getFestivalDetails(festivalId: string): Promise<FestivalDetails> {
+export async function getFestivalDetails(
+  festivalId: string,
+  includeSynthetic: boolean = true
+): Promise<FestivalDetails> {
   if (!festivalId) {
     throw new Error('festivalId is required to fetch festival details');
   }
-  return apiClient<FestivalDetails>(`/api/festivals/${encodeURIComponent(festivalId)}`);
+  const query = includeSynthetic ? '?include_synthetic=true' : '';
+  return apiClient<FestivalDetails>(`/api/festivals/${encodeURIComponent(festivalId)}${query}`);
 }

@@ -95,8 +95,10 @@ export interface PredictionResponse {
   festival_id: string;
   timeline: TimelineStep[];
   peak_surge_time: string;
+  peak_crowd?: number;
   highest_demand_stops: string[];
   stop_forecasts?: StopForecast[];
+  stop_forecast?: unknown[];
 }
 
 // ==========================================

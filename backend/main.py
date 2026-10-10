@@ -10,6 +10,9 @@ from backend.api.health import router as health_router
 from backend.api.routes import router as routes_router
 from backend.api.festivals import router as festivals_router
 from backend.api.optimize import router as optimize_router
+from backend.api.predict import router as predict_router
+from backend.api.simulate import router as simulate_router
+from backend.api.ai import router as ai_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -33,6 +36,9 @@ app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(routes_router, prefix=settings.API_V1_PREFIX)
 app.include_router(festivals_router, prefix=settings.API_V1_PREFIX)
 app.include_router(optimize_router, prefix=settings.API_V1_PREFIX)
+app.include_router(predict_router, prefix=settings.API_V1_PREFIX)
+app.include_router(simulate_router, prefix=settings.API_V1_PREFIX)
+app.include_router(ai_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/", tags=["Root"])

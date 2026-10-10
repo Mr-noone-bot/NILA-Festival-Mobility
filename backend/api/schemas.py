@@ -251,3 +251,90 @@ class OptimizeResponse(BaseModel):
     modeled_assumptions: List[str] = Field(default_factory=list)
     status: str = "SUCCESS"
     message: Optional[str] = None
+
+
+# ==========================================
+# 5. Crowd Prediction Schemas
+# ==========================================
+class PredictionRequest(BaseModel):
+    festival_id: str
+    time_window_start: Optional[str] = None
+    time_window_end: Optional[str] = None
+    weather_condition: str = "clear"
+    surge_multiplier: float = 1.0
+    attendance_multiplier: Optional[float] = None
+    rain_probability: Optional[float] = 0.0
+    event_end_time: Optional[str] = None
+    bus_capacity: Optional[int] = 50
+    load_factor: Optional[float] = 0.85
+    interval_minutes: Optional[int] = 15
+
+
+class TimelineStep(BaseModel):
+    timestamp: str
+    total_crowd_estimate: int
+    discharge_rate_per_hour: int
+    surge_alert_level: str
+
+
+class StopForecast(BaseModel):
+    stop_id: str
+    predicted_demand: int
+    waiting_minutes: float
+    risk_level: str
+    queue: Optional[int] = None
+    required_buses: Optional[int] = None
+    crowd_pressure: Optional[float] = None
+    risk_score: Optional[int] = None
+
+
+class PredictionResponse(BaseModel):
+    festival_id: str
+    timeline: List[TimelineStep]
+    peak_surge_time: str
+    peak_crowd: Optional[int] = None
+    highest_demand_stops: List[str]
+    stop_forecasts: List[StopForecast] = Field(default_factory=list)
+    stop_forecast: Optional[List[Dict[str, Any]]] = None
+
+
+# ==========================================
+# 6. Scenario Simulation Schemas
+# ==========================================
+class SimulationRequest(BaseModel):
+    festival_id: str
+    prediction_timeline_id: Optional[str] = None
+    simulation_step_minutes: Optional[int] = 15
+    crowd_exit_speed_kmh: Optional[float] = 2.5
+    attendance_multiplier: Optional[float] = 1.0
+    rain_probability: Optional[float] = 0.0
+    event_delay_minutes: Optional[int] = 0
+    bus_failures: Optional[int] = 0
+    failed_stop_id: Optional[str] = None
+
+
+class StopQueueStatus(BaseModel):
+    waiting_passengers: int
+    queue_risk: str
+
+
+class SimulationDensityPoint(BaseModel):
+    latitude: float
+    longitude: float
+    weight: float
+
+
+class SimulationStep(BaseModel):
+    step_time: str
+    stop_queues: Dict[str, StopQueueStatus]
+    density_grid: List[SimulationDensityPoint] = Field(default_factory=list)
+
+
+class SimulationResponse(BaseModel):
+    simulation_id: str
+    steps: List[SimulationStep]
+    baseline: Optional[Dict[str, Any]] = None
+    scenario: Optional[Dict[str, Any]] = None
+    changes: Optional[Dict[str, Any]] = None
+    stop_comparisons: Optional[List[Dict[str, Any]]] = None
+

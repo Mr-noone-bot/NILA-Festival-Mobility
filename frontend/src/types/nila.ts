@@ -95,7 +95,7 @@ export interface ForecastMetrics {
 }
 
 export interface ForecastResponse {
-  source: 'api' | 'demo';
+  source: 'api' | 'demo' | 'not_run';
   metrics: ForecastMetrics;
   points: CrowdPoint[];
   stops: Stop[];
@@ -121,11 +121,11 @@ export interface BusMove {
 }
 
 export interface OptimizeResponse {
-  source: 'api' | 'demo';
+  source: 'api' | 'demo' | 'not_run';
   plan_id: string;
   total_fleet_size: number;
   fleet_conserved: boolean;
-  move: BusMove;
+  move: BusMove | null;
   overall_queue_reduction_percentage: number;
   final_allocation?: Record<string, number>;
 }
@@ -146,7 +146,7 @@ export interface ScenarioMetrics {
 }
 
 export interface ScenarioResult {
-  source: 'api' | 'demo';
+  source: 'api' | 'demo' | 'not_run';
   baseline: ScenarioMetrics;
   scenario: ScenarioMetrics;
 }

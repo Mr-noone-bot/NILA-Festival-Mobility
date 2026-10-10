@@ -45,7 +45,7 @@ export default function AskNila({
 }: AskNilaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeMove: BusMove = optimization.move;
+  const activeMove: BusMove | null = optimization.move;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -227,12 +227,20 @@ export default function AskNila({
                 <div className="text-[11px] font-bold text-sky-800 uppercase flex items-center gap-1">
                   <Zap size={12} /> Active Bus Move
                 </div>
-                <div className="text-xs font-bold text-slate-900 mt-0.5">
-                  Shift {activeMove.buses} buses to {activeMove.destinationStop}
-                </div>
-                <div className="text-[11px] text-slate-500">
-                  Origin: {activeMove.sourceStop} · Transit: {activeMove.travelMinutes}m
-                </div>
+                {activeMove ? (
+                  <>
+                    <div className="text-xs font-bold text-slate-900 mt-0.5">
+                      Shift {activeMove.buses} buses to {activeMove.destinationStop}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Origin: {activeMove.sourceStop} · Transit: {activeMove.travelMinutes}m
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xs text-slate-600 mt-0.5 italic">
+                    No active repositioning scheduled
+                  </div>
+                )}
               </div>
 
               <div className="p-3 bg-sky-50/70 rounded-xl border border-sky-100">
