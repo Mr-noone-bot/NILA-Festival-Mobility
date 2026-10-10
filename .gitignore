@@ -9,7 +9,7 @@
 .env.development.local
 .env.test.local
 .env.production.local
-*.env
+.env.*
 !*.env.example
 
 # Python & Virtual Environments
