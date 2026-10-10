@@ -4,20 +4,20 @@ Foundation health check router.
 """
 
 from fastapi import APIRouter
-from typing import Dict, Any
+from backend.api.schemas import HealthResponse
 
 router = APIRouter(tags=["Health"])
 
 
-@router.get("/health", response_model=Dict[str, Any])
-async def health_check() -> Dict[str, Any]:
+@router.get("/health", response_model=HealthResponse)
+async def health_check() -> HealthResponse:
     """
     Service health check endpoint.
     Returns HTTP 200 with service status.
     """
-    return {
-        "status": "healthy",
-        "service": "nila-backend",
-        "version": "0.1.0",
-        "environment": "foundation"
-    }
+    return HealthResponse(
+        status="healthy",
+        service="nila-backend",
+        version="0.1.0",
+        environment="foundation",
+    )

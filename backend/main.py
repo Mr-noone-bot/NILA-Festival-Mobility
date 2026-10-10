@@ -7,6 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.core.config import settings
 from backend.api.health import router as health_router
+from backend.api.routes import router as routes_router
+from backend.api.festivals import router as festivals_router
+from backend.api.optimize import router as optimize_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -27,6 +30,9 @@ app.add_middleware(
 
 # Mount API Routers
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
+app.include_router(routes_router, prefix=settings.API_V1_PREFIX)
+app.include_router(festivals_router, prefix=settings.API_V1_PREFIX)
+app.include_router(optimize_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/", tags=["Root"])
