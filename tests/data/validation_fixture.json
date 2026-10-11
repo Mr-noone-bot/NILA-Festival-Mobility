@@ -1,0 +1,31 @@
+{
+  "description": "Test fixture for dataset integrity, provenance tags, referential constraints, and bounding boxes.",
+  "expected_status_values": [
+    "OFFICIAL",
+    "DERIVED",
+    "SIMULATION",
+    "OPERATIONAL_ESTIMATE"
+  ],
+  "required_dataset_files": [
+    "data/festivals.json",
+    "data/temples.json",
+    "data/stops.json",
+    "data/routes.json",
+    "data/buses.json",
+    "data/crowd_profiles.json",
+    "data/weather_profiles.json",
+    "data/scenarios.json"
+  ],
+  "expected_official_temple_ids": [
+    "TN-HRCE-031962",
+    "TN-HRCE-032203",
+    "TN-HRCE-020343"
+  ],
+  "tamil_nadu_bbox": {
+    "min_lat": 8.0,
+    "max_lat": 13.5,
+    "min_lng": 76.2,
+    "max_lng": 80.4
+  },
+  "fixed_fleet_size": 20
+}

@@ -1,0 +1,147 @@
+{
+  "dataset_name": "NILA Simulation Operational Scenarios",
+  "version": "1.0.0",
+  "last_reviewed": "2026-10-11",
+  "records": [
+    {
+      "scenario_id": "normal",
+      "name": "Normal Festival Baseline Scenario",
+      "city": "Madurai",
+      "festival_id": "madurai-chithirai-2026",
+      "attendance_multiplier": 1.0,
+      "rain_probability": 5,
+      "event_delay_minutes": 0,
+      "bus_failure_count": 0,
+      "crowd_profile_id": "SIM-CROWD-NORMAL",
+      "weather_profile_id": "SIM-WEATHER-CLEAR-SUMMER",
+      "initial_fleet_allocation": {
+        "stop-periyar": 5,
+        "stop-aarapalayam": 5,
+        "stop-mattuthavani": 10
+      },
+      "total_fleet_size": 20,
+      "data_type": "SIMULATION",
+      "notes": "Nominal operational scenario with scheduled event timing and baseline fleet positioning."
+    },
+    {
+      "scenario_id": "attendance_120",
+      "name": "Increased Attendance Surge (+20%)",
+      "city": "Madurai",
+      "festival_id": "madurai-chithirai-2026",
+      "attendance_multiplier": 1.20,
+      "rain_probability": 5,
+      "event_delay_minutes": 0,
+      "bus_failure_count": 0,
+      "crowd_profile_id": "SIM-CROWD-ATTENDANCE-120",
+      "weather_profile_id": "SIM-WEATHER-CLEAR-SUMMER",
+      "initial_fleet_allocation": {
+        "stop-periyar": 5,
+        "stop-aarapalayam": 5,
+        "stop-mattuthavani": 10
+      },
+      "total_fleet_size": 20,
+      "data_type": "SIMULATION",
+      "notes": "Simulates unexpected 20% turnout swell at Periyar terminal following sacred car arrival."
+    },
+    {
+      "scenario_id": "attendance_150",
+      "name": "Critical Attendance Surge (+50%)",
+      "city": "Madurai",
+      "festival_id": "madurai-chithirai-2026",
+      "attendance_multiplier": 1.50,
+      "rain_probability": 5,
+      "event_delay_minutes": 0,
+      "bus_failure_count": 0,
+      "crowd_profile_id": "SIM-CROWD-ATTENDANCE-150",
+      "weather_profile_id": "SIM-WEATHER-CLEAR-SUMMER",
+      "initial_fleet_allocation": {
+        "stop-periyar": 5,
+        "stop-aarapalayam": 5,
+        "stop-mattuthavani": 10
+      },
+      "total_fleet_size": 20,
+      "data_type": "SIMULATION",
+      "notes": "Extreme stress scenario testing capacity thresholds at sacred perimeter stops."
+    },
+    {
+      "scenario_id": "rain",
+      "name": "Heavy Monsoon Downpour Scenario",
+      "city": "Madurai",
+      "festival_id": "madurai-chithirai-2026",
+      "attendance_multiplier": 0.95,
+      "rain_probability": 95,
+      "event_delay_minutes": 15,
+      "bus_failure_count": 0,
+      "crowd_profile_id": "SIM-CROWD-NORMAL",
+      "weather_profile_id": "SIM-WEATHER-HEAVY-DOWNPOUR",
+      "initial_fleet_allocation": {
+        "stop-periyar": 5,
+        "stop-aarapalayam": 5,
+        "stop-mattuthavani": 10
+      },
+      "total_fleet_size": 20,
+      "data_type": "SIMULATION",
+      "notes": "Heavy rains decrease walking speeds and increase road transit times by 45%."
+    },
+    {
+      "scenario_id": "event_delay_30",
+      "name": "Ritual Event Delay (30 min)",
+      "city": "Madurai",
+      "festival_id": "madurai-chithirai-2026",
+      "attendance_multiplier": 1.15,
+      "rain_probability": 10,
+      "event_delay_minutes": 30,
+      "bus_failure_count": 0,
+      "crowd_profile_id": "SIM-CROWD-EVENT-END",
+      "weather_profile_id": "SIM-WEATHER-CLEAR-SUMMER",
+      "initial_fleet_allocation": {
+        "stop-periyar": 5,
+        "stop-aarapalayam": 5,
+        "stop-mattuthavani": 10
+      },
+      "total_fleet_size": 20,
+      "data_type": "SIMULATION",
+      "notes": "Postponed chariot arrival causes acute crowd accumulation in holding zones."
+    },
+    {
+      "scenario_id": "bus_failure_1",
+      "name": "Single Vehicle Breakdown Incident",
+      "city": "Madurai",
+      "festival_id": "madurai-chithirai-2026",
+      "attendance_multiplier": 1.0,
+      "rain_probability": 5,
+      "event_delay_minutes": 0,
+      "bus_failure_count": 1,
+      "crowd_profile_id": "SIM-CROWD-NORMAL",
+      "weather_profile_id": "SIM-WEATHER-CLEAR-SUMMER",
+      "initial_fleet_allocation": {
+        "stop-periyar": 4,
+        "stop-aarapalayam": 5,
+        "stop-mattuthavani": 10
+      },
+      "total_fleet_size": 19,
+      "data_type": "SIMULATION",
+      "notes": "Tests optimizer reallocation when active fleet is reduced by 1 vehicle at Periyar."
+    },
+    {
+      "scenario_id": "combined_stress",
+      "name": "Combined Severe Stress Scenario (Surge + Rain + Delay + Breakdown)",
+      "city": "Madurai",
+      "festival_id": "madurai-chithirai-2026",
+      "attendance_multiplier": 1.35,
+      "rain_probability": 90,
+      "event_delay_minutes": 30,
+      "bus_failure_count": 1,
+      "crowd_profile_id": "SIM-CROWD-EVENT-END",
+      "weather_profile_id": "SIM-WEATHER-HEAVY-DOWNPOUR",
+      "initial_fleet_allocation": {
+        "stop-periyar": 4,
+        "stop-aarapalayam": 5,
+        "stop-mattuthavani": 10
+      },
+      "total_fleet_size": 19,
+      "data_type": "SIMULATION",
+      "notes": "Maximum compound stress scenario combining surge, rainfall slowdowns, ritual delay, and vehicle loss."
+    }
+  ]
+}

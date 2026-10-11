@@ -1,0 +1,59 @@
+{
+  "dataset_name": "NILA Weather Impact Profiles",
+  "version": "1.0.0",
+  "last_reviewed": "2026-10-11",
+  "records": [
+    {
+      "profile_id": "SIM-WEATHER-CLEAR-SUMMER",
+      "condition": "clear_summer",
+      "ambient_temp_c": 36.0,
+      "rain_probability": 5,
+      "rain_mm_per_hour": 0.0,
+      "visibility_km": 10.0,
+      "walking_speed_factor": 1.0,
+      "heat_exhaustion_risk": "LOW",
+      "transit_delay_multiplier": 1.0,
+      "data_type": "SIMULATION",
+      "notes": "Typical sunny weather in Tamil Nadu plains; nominal pedestrian and bus transit speeds."
+    },
+    {
+      "profile_id": "SIM-WEATHER-EXTREME-HEAT",
+      "condition": "extreme_heat",
+      "ambient_temp_c": 42.5,
+      "rain_probability": 0,
+      "rain_mm_per_hour": 0.0,
+      "visibility_km": 10.0,
+      "walking_speed_factor": 0.82,
+      "heat_exhaustion_risk": "HIGH",
+      "transit_delay_multiplier": 1.10,
+      "data_type": "SIMULATION",
+      "notes": "Scorching Chithirai summer conditions; slows walking pace and requires rapid shaded bus boarding."
+    },
+    {
+      "profile_id": "SIM-WEATHER-LIGHT-RAIN",
+      "condition": "light_rain",
+      "ambient_temp_c": 28.0,
+      "rain_probability": 80,
+      "rain_mm_per_hour": 3.0,
+      "visibility_km": 7.0,
+      "walking_speed_factor": 0.88,
+      "heat_exhaustion_risk": "LOW",
+      "transit_delay_multiplier": 1.15,
+      "data_type": "SIMULATION",
+      "notes": "Intermittent showers causing minor road slippage and modest passenger hesitation."
+    },
+    {
+      "profile_id": "SIM-WEATHER-HEAVY-DOWNPOUR",
+      "condition": "heavy_rain",
+      "ambient_temp_c": 24.5,
+      "rain_probability": 95,
+      "rain_mm_per_hour": 18.0,
+      "visibility_km": 3.0,
+      "walking_speed_factor": 0.65,
+      "heat_exhaustion_risk": "LOW",
+      "transit_delay_multiplier": 1.45,
+      "data_type": "SIMULATION",
+      "notes": "Severe monsoon downpour; severe pedestrian bottlenecking under awnings and flooded road segments."
+    }
+  ]
+}
