@@ -1,6 +1,97 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "NILA Crowd Profiles Schema",
-  "description": "Historical and empirical crowd surge profiles, arrival/departure distributions over festival timeline. To be populated by data owner.",
-  "items": []
+  "dataset_name": "NILA Crowd Behavior Profiles",
+  "version": "1.0.0",
+  "last_reviewed": "2026-10-11",
+  "records": [
+    {
+      "profile_id": "SIM-CROWD-NORMAL",
+      "label": "normal",
+      "description": "Baseline pilgrimage crowd flow during non-peak festival hours",
+      "surge_multiplier": 1.0,
+      "relative_demand_index": 0.50,
+      "buildup_rate_per_hour": 5000,
+      "discharge_rate_per_hour": 6000,
+      "exit_speed_kmh": 3.2,
+      "time_of_day_factors": {
+        "morning_buildup": 1.1,
+        "afternoon_lull": 0.7,
+        "evening_surge": 1.2,
+        "night_dispersal": 0.8
+      },
+      "data_type": "SIMULATION",
+      "notes": "Synthetic baseline demand index for routine operational modeling."
+    },
+    {
+      "profile_id": "SIM-CROWD-PEAK-SURGE",
+      "label": "peak_surge",
+      "description": "Intense accumulation leading up to major ritual milestones (e.g. Ther pull, Theerthavari)",
+      "surge_multiplier": 1.65,
+      "relative_demand_index": 0.90,
+      "buildup_rate_per_hour": 18000,
+      "discharge_rate_per_hour": 15000,
+      "exit_speed_kmh": 2.4,
+      "time_of_day_factors": {
+        "morning_buildup": 1.8,
+        "afternoon_lull": 1.1,
+        "evening_surge": 1.9,
+        "night_dispersal": 1.3
+      },
+      "data_type": "SIMULATION",
+      "notes": "Synthetic peak curve modeling heavy pedestrian concentrations around gopuram gates."
+    },
+    {
+      "profile_id": "SIM-CROWD-EVENT-END",
+      "label": "event_end_rush",
+      "description": "Simultaneous mass exit following completion of sacred ritual",
+      "surge_multiplier": 1.90,
+      "relative_demand_index": 0.95,
+      "buildup_rate_per_hour": 2000,
+      "discharge_rate_per_hour": 28000,
+      "exit_speed_kmh": 2.1,
+      "discharge_half_life_min": 45,
+      "time_of_day_factors": {
+        "immediate_post_event_0_30m": 2.4,
+        "post_event_30_60m": 1.8,
+        "post_event_60_120m": 1.2
+      },
+      "data_type": "SIMULATION",
+      "notes": "Critical zero-sum surge condition when crowd rapidly empties into bus terminals."
+    },
+    {
+      "profile_id": "SIM-CROWD-ATTENDANCE-120",
+      "label": "attendance_120",
+      "description": "Higher turnout scenario (+20% general inflow above expectation)",
+      "surge_multiplier": 1.20,
+      "relative_demand_index": 0.70,
+      "buildup_rate_per_hour": 7500,
+      "discharge_rate_per_hour": 9000,
+      "exit_speed_kmh": 2.9,
+      "time_of_day_factors": {
+        "morning_buildup": 1.3,
+        "afternoon_lull": 0.85,
+        "evening_surge": 1.45,
+        "night_dispersal": 0.95
+      },
+      "data_type": "SIMULATION",
+      "notes": "Used for standard stress testing under +20% crowd pressure."
+    },
+    {
+      "profile_id": "SIM-CROWD-ATTENDANCE-150",
+      "label": "attendance_150",
+      "description": "Severe turnout scenario (+50% general inflow above expectation)",
+      "surge_multiplier": 1.50,
+      "relative_demand_index": 0.85,
+      "buildup_rate_per_hour": 12000,
+      "discharge_rate_per_hour": 14000,
+      "exit_speed_kmh": 2.5,
+      "time_of_day_factors": {
+        "morning_buildup": 1.6,
+        "afternoon_lull": 1.0,
+        "evening_surge": 1.75,
+        "night_dispersal": 1.2
+      },
+      "data_type": "SIMULATION",
+      "notes": "Used for critical queue overflow stress testing under +50% crowd pressure."
+    }
+  ]
 }

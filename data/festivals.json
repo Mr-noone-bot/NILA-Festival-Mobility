@@ -1,6 +1,139 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "NILA Festivals Schema",
-  "description": "Festival catalog containing dates, venues, expected peak times, and events. To be populated by data owner.",
-  "items": []
+  "dataset_name": "NILA Festival Catalog",
+  "version": "1.0.0",
+  "last_reviewed": "2026-10-11",
+  "records": [
+    {
+      "id": "madurai-chithirai-2026",
+      "name": "Chithirai Thiruvizha",
+      "name_ta": "சித்திரை திருவிழா",
+      "city": "Madurai",
+      "district": "Madurai",
+      "state": "Tamil Nadu",
+      "temple_id": "TN-HRCE-031962",
+      "temple_slug": "meenakshi-amman",
+      "temple_name": "Arulmigu Meenakshi Sundaraswarar Temple",
+      "date_window": "April/May 2026",
+      "start_date": null,
+      "end_date": null,
+      "expected_peak_day": null,
+      "expected_attendance": 500000,
+      "major_event": "Chariot Procession (Ther)",
+      "major_event_end": "12:00:00+05:30",
+      "festival_intensity": "CRITICAL",
+      "weather_sensitivity": "HIGH",
+      "peak_events": [
+        {
+          "id": "event-mdu-kalyanam",
+          "name": "Meenakshi-Sundareswarar Celestial Wedding (Thirukkalyanam)",
+          "name_ta": "திருக்கல்யாணம்",
+          "date": null,
+          "estimated_turnout": 250000
+        },
+        {
+          "id": "event-mdu-ther",
+          "name": "Chariot Procession (Ther Thiruvizha)",
+          "name_ta": "தேர் திருவிழா",
+          "date": null,
+          "estimated_turnout": 500000
+        }
+      ],
+      "data_type": "OFFICIAL",
+      "attendance_type": "OPERATIONAL_ESTIMATE",
+      "source_urls": [
+        "https://madurai.nic.in/festivals-and-events/",
+        "https://hrce.tn.gov.in/hrcehome/hrce-festival-calendar.php"
+      ],
+      "verification_status": "PARTIALLY_VERIFIED",
+      "notes": "Official Madurai district portal and HR&CE calendar verify annual festival in April/May. Exact 2026 daily dates remain unverified and set to null to avoid fabrication."
+    },
+    {
+      "id": "palani-thaipusam-2026",
+      "name": "Thaipusam",
+      "name_ta": "தைப்பூசம்",
+      "city": "Palani",
+      "district": "Dindigul",
+      "state": "Tamil Nadu",
+      "temple_id": "TN-HRCE-032203",
+      "temple_slug": "palani-murugan",
+      "temple_name": "Arulmigu Dhandayuthapaniswamy Temple",
+      "date_window": "February 2026",
+      "start_date": "2026-02-01",
+      "end_date": "2026-02-01",
+      "expected_peak_day": "2026-02-01",
+      "expected_attendance": 350000,
+      "major_event": "Thaipusam Ther Procession",
+      "major_event_end": "14:00:00+05:30",
+      "festival_intensity": "HIGH",
+      "weather_sensitivity": "MEDIUM",
+      "peak_events": [
+        {
+          "id": "event-pal-thaipusam",
+          "name": "Thaipusam Observance",
+          "name_ta": "தைப்பூசம்",
+          "date": "2026-02-01",
+          "estimated_turnout": 350000
+        },
+        {
+          "id": "event-pal-theppam",
+          "name": "Theppam Float Festival (Tentative)",
+          "name_ta": "தெப்ப உற்சவம்",
+          "date": null,
+          "estimated_turnout": 150000
+        }
+      ],
+      "data_type": "OFFICIAL",
+      "attendance_type": "OPERATIONAL_ESTIMATE",
+      "source_urls": [
+        "https://hrce.tn.gov.in/hrcehome/hrce-festival-calendar.php?month=2&year=2026",
+        "https://palanimurugan.hrce.tn.gov.in/hrcehome/index_temple.php?tid=32203"
+      ],
+      "verification_status": "DATE_VERIFIED_FOR_THAIPUSAM_ONLY",
+      "notes": "HR&CE calendar confirms Thaipusam observance date 2026-02-01. Other sub-event dates remain null until officially announced."
+    },
+    {
+      "id": "tiruvannamalai-karthigai-deepam-2026",
+      "name": "Karthigai Deepam",
+      "name_ta": "கார்த்திகை தீபம்",
+      "city": "Thiruvannamalai",
+      "district": "Thiruvannamalai",
+      "state": "Tamil Nadu",
+      "temple_id": "TN-HRCE-020343",
+      "temple_slug": "arunachaleswarar",
+      "temple_name": "Arulmigu Arunachaleswarar Temple",
+      "date_window": "November/December 2026",
+      "start_date": null,
+      "end_date": null,
+      "expected_peak_day": null,
+      "expected_attendance": 600000,
+      "major_event": "Maha Deepam Lighting (Arunachala Peak)",
+      "major_event_end": "18:00:00+05:30",
+      "festival_intensity": "CRITICAL",
+      "weather_sensitivity": "MEDIUM",
+      "peak_events": [
+        {
+          "id": "event-tvm-bharani",
+          "name": "Bharani Deepam",
+          "name_ta": "பரணி தீபம்",
+          "date": null,
+          "estimated_turnout": 200000
+        },
+        {
+          "id": "event-tvm-mahadeepam",
+          "name": "Maha Deepam Lighting and Girivalam Peak",
+          "name_ta": "மகா தீபம்",
+          "date": null,
+          "estimated_turnout": 600000
+        }
+      ],
+      "data_type": "OFFICIAL",
+      "attendance_type": "OPERATIONAL_ESTIMATE",
+      "source_urls": [
+        "https://tiruvannamalai.nic.in/karthigai-festival/",
+        "https://annamalaiyar.hrce.tn.gov.in/hrcehome/index_temple.php?action=contact_us&tid=20343"
+      ],
+      "verification_status": "PARTIALLY_VERIFIED",
+      "notes": "District administration confirms Karthigai Deepam festival. Exact dates left null pending official temple calendar publication."
+    }
+  ]
 }
