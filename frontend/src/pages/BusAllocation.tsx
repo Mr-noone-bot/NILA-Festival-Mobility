@@ -300,12 +300,12 @@ export default function BusAllocation({
       <h3 className="text-base font-bold text-slate-900">
         {optimization?.source === 'not_run'
           ? 'Fleet Optimization Pending'
-          : 'Current Allocation Optimal — No Repositioning Required'}
+          : 'No beneficial repositioning required for this scenario.'}
       </h3>
       <p className="text-xs text-slate-600 mt-1 max-w-lg mx-auto">
         {optimization?.source === 'not_run'
           ? 'Click "Generate Optimization Plan" above to calculate optimal vehicle reallocation under the fixed-fleet invariant.'
-          : 'All monitored stops have balanced supply relative to predicted crowd demand. No bus relocation transfers are required.'}
+          : 'All monitored stops have balanced supply relative to predicted crowd demand. No beneficial repositioning required for this scenario.'}
       </p>
     </div>
   )}

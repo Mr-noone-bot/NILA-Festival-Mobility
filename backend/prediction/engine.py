@@ -51,20 +51,22 @@ KOLKATA_TZ = ZoneInfo("Asia/Kolkata")
 def _parse_or_default_time(
     iso_or_time_str: Optional[str],
     reference_date: datetime,
-    default_hour: int,
-    default_minute: int
+    default_hour: Optional[int] = None,
+    default_minute: Optional[int] = None
 ) -> datetime:
     """
     Parses an ISO-8601 string or HH:MM string into a timezone-aware datetime in Asia/Kolkata.
     """
     if not iso_or_time_str:
-        return reference_date.replace(
-            hour=default_hour,
-            minute=default_minute,
-            second=0,
-            microsecond=0,
-            tzinfo=KOLKATA_TZ
-        )
+        if default_hour is not None and default_minute is not None:
+            return reference_date.replace(
+                hour=default_hour % 24,
+                minute=default_minute,
+                second=0,
+                microsecond=0,
+                tzinfo=KOLKATA_TZ
+            )
+        return reference_date if reference_date.tzinfo else reference_date.replace(tzinfo=KOLKATA_TZ)
 
     try:
         # Try full ISO-8601 format
@@ -143,14 +145,10 @@ class PredictionEngine:
         window_start_dt = _parse_or_default_time(
             config.time_window_start,
             event_end_dt - timedelta(hours=3),
-            event_end_dt.hour - 3,
-            0
         )
         window_end_dt = _parse_or_default_time(
             config.time_window_end,
             event_end_dt + timedelta(hours=5),
-            event_end_dt.hour + 5,
-            0
         )
 
         if window_start_dt >= window_end_dt:

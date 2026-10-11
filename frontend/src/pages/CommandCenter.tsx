@@ -509,12 +509,12 @@ export default function CommandCenter({
             <h4 className="text-sm font-bold text-slate-800">
               {optimization?.source === 'not_run'
                 ? 'Optimization Plan Pending'
-                : 'Current Allocation Optimal — No Repositioning Required'}
+                : 'No beneficial repositioning required for this scenario.'}
             </h4>
             <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto">
               {optimization?.source === 'not_run'
                 ? 'Click "Re-Run Optimizer" above to compute time-aware zero-sum vehicle redistribution using real demand estimates.'
-                : 'Current fleet allocation meets projected peak demands across all terminals without triggering congestion bottlenecks.'}
+                : 'No beneficial repositioning required for this scenario. Current fleet allocation satisfies projected peak demand.'}
             </p>
           </div>
         )}

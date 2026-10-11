@@ -24,7 +24,7 @@ interface EventCommanderProps {
 export default function EventCommander({
   festival,
   forecast,
-  optimization: _optimization,
+  optimization,
   decisions,
   stops: _stops,
   onNavigate,
@@ -218,7 +218,9 @@ export default function EventCommander({
               <div>
                 <div className="text-xs text-slate-400">Network Queue Relief</div>
                 <div className="text-sm font-bold text-cyan-300">
-                  60% Projected Queue Reduction
+                  {optimization.overall_queue_reduction_percentage
+                    ? `${optimization.overall_queue_reduction_percentage.toFixed(0)}% Projected Queue Reduction`
+                    : 'Calculated upon optimization'}
                 </div>
               </div>
               <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">

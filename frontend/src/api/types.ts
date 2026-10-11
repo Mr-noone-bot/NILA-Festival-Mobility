@@ -115,6 +115,7 @@ export interface OptimizationRequest {
   current_allocation: Record<string, number>;
   predicted_demand_profile: Record<string, number>;
   time_horizon_minutes: number;
+  use_synthetic_capacity_fallback?: boolean;
 }
 
 export interface RepositioningMove {

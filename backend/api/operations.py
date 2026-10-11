@@ -85,6 +85,29 @@ class CannotComplyRequest(BaseModel):
     reason: str
 
 
+class DecisionSyncRequest(BaseModel):
+    """
+    Accepts real optimization output from the prediction+optimization pipeline.
+    Used by the reactive frontend to push grounded decisions into the queue.
+    """
+    plan_id: str
+    risk_level: str                    # CRITICAL, HIGH, MODERATE, LOW
+    peak_surge_time: Optional[str] = None
+    average_waiting_time_minutes: Optional[float] = None
+    highest_demand_stop: Optional[str] = None
+    source_stop: Optional[str] = None
+    destination_stop: Optional[str] = None
+    buses_to_transfer: Optional[int] = None
+    departure_time: Optional[str] = None
+    arrival_time: Optional[str] = None
+    travel_time_minutes: Optional[int] = None
+    expected_benefit: Optional[str] = None
+    source_service_loss: Optional[str] = None
+    network_effect: Optional[str] = None
+    overall_queue_reduction_percentage: Optional[float] = None
+    festival_id: str = "madurai-chithirai-2026"
+
+
 class CrowdReportRequest(BaseModel):
     stop_id: str
     level: str  # LIGHT, MODERATE, HEAVY, UNSAFE
@@ -233,7 +256,7 @@ _decisions: Dict[str, DecisionItem] = {
     "DEC-001": DecisionItem(
         id="DEC-001",
         priority="CRITICAL",
-        problem="Periyar Bus Stand predicted critical demand surge at 20:10 (Egress queue +1,850 pilgrims)",
+        problem="Periyar Bus Stand predicted critical demand surge at egress peak window. High crowd accumulation detected.",
         action="Reposition 2 empty/returning buses from Mattuthavani to Periyar",
         bus_ids=["BUS-12", "BUS-08"],
         source_stop="Mattuthavani",
@@ -242,25 +265,8 @@ _decisions: Dict[str, DecisionItem] = {
         arrival_time="19:06",
         travel_time_minutes=14,
         benefit="-13 min average wait time at Periyar; 60% queue reduction",
-        tradeoff="Source service -2 buses; Mattuthavani wait +3 min (surplus absorption buffer remains)",
+        tradeoff="Source service -2 buses; Mattuthavani wait +3 min (surplus buffer remains)",
         network_effect="-10 min net wait reduction across network; fleet conserved at 25",
-        confidence="HIGH",
-        status="PENDING",
-    ),
-    "DEC-002": DecisionItem(
-        id="DEC-002",
-        priority="HIGH",
-        problem="Aarapalayam feeder surge approaching 85% staging threshold",
-        action="Deploy 1 returning bus on Aarapalayam South Shuttles",
-        bus_ids=["BUS-06"],
-        source_stop="Aarapalayam",
-        destination_stop="Aarapalayam South",
-        departure_time="19:05",
-        arrival_time="19:15",
-        travel_time_minutes=10,
-        benefit="-6 min boarding wait at Aarapalayam",
-        tradeoff="Depot turnaround buffer reduced by 10 minutes",
-        network_effect="Prevents terminal gate spillover",
         confidence="HIGH",
         status="PENDING",
     ),
@@ -334,6 +340,83 @@ async def get_decision_queue() -> List[DecisionItem]:
     decisions = list(_decisions.values())
     decisions.sort(key=lambda d: priority_order.get(d.priority, 9))
     return decisions
+
+
+@router.post("/decisions/sync", response_model=List[DecisionItem], status_code=status.HTTP_200_OK)
+async def sync_decisions_from_optimization(req: DecisionSyncRequest) -> List[DecisionItem]:
+    """
+    Accepts real prediction+optimization output from the reactive frontend pipeline.
+    Creates or updates a dynamically grounded decision from the optimizer's repositioning move.
+    Preserves APPROVED/REJECTED decisions from earlier cycles.
+    Returns the updated decision queue.
+    """
+    # Only a valid move from the optimizer creates a new decision
+    if not req.source_stop or not req.destination_stop or not req.buses_to_transfer:
+        # No valid move — remove all PENDING decisions so UI reflects no repositioning required
+        stale_ids = [k for k, d in _decisions.items() if d.status == "PENDING"]
+        for k in stale_ids:
+            del _decisions[k]
+        priority_order = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2}
+        result = sorted(_decisions.values(), key=lambda d: priority_order.get(d.priority, 9))
+        return result
+
+    # Determine priority from risk level
+    risk_to_priority = {"CRITICAL": "CRITICAL", "HIGH": "HIGH", "MODERATE": "MODERATE", "LOW": "MODERATE"}
+    priority = risk_to_priority.get(req.risk_level.upper(), "MODERATE")
+
+    # Find candidate buses with AVAILABLE or RETURNING status at source stop
+    candidate_buses = [
+        b.bus_id for b in _fleet_ledger.values()
+        if b.status in ("AVAILABLE", "RETURNING") and b.candidate_for_repositioning
+    ][:req.buses_to_transfer]
+
+    if not candidate_buses:
+        # Fallback: take first available buses
+        candidate_buses = [
+            b.bus_id for b in _fleet_ledger.values()
+            if b.status == "AVAILABLE"
+        ][:req.buses_to_transfer]
+
+    wait_str = f"{req.average_waiting_time_minutes:.0f} min" if req.average_waiting_time_minutes else "elevated"
+    queue_pct = f"{req.overall_queue_reduction_percentage:.0f}%" if req.overall_queue_reduction_percentage else "significant"
+
+    dec_id = f"OPT-{req.plan_id[-6:]}"
+    peak_time_str = req.peak_surge_time or "surge window"
+
+    new_decision = DecisionItem(
+        id=dec_id,
+        priority=priority,
+        problem=(
+            f"{req.highest_demand_stop or req.destination_stop} predicted {req.risk_level} demand surge "
+            f"at {peak_time_str}. Average wait: {wait_str}."
+        ),
+        action=(
+            f"Reposition {req.buses_to_transfer} bus(es) from {req.source_stop} "
+            f"to {req.destination_stop} before peak egress."
+        ),
+        bus_ids=candidate_buses if candidate_buses else ["BUS-12"],
+        source_stop=req.source_stop,
+        destination_stop=req.destination_stop,
+        departure_time=req.departure_time or "NOW",
+        arrival_time=req.arrival_time or "~14 min",
+        travel_time_minutes=req.travel_time_minutes or 14,
+        benefit=req.expected_benefit or f"{queue_pct} queue reduction at destination",
+        tradeoff=req.source_service_loss or f"Source capacity -{ req.buses_to_transfer} bus(es); surplus buffer absorbs impact",
+        network_effect=req.network_effect or f"Fleet conserved at 25; net wait reduction across network",
+        confidence="HIGH",
+        status="PENDING",
+    )
+
+    # Purge all previous PENDING decisions so queue reflects the active scenario
+    stale_ids = [k for k, d in _decisions.items() if d.status == "PENDING"]
+    for k in stale_ids:
+        del _decisions[k]
+
+    _decisions[dec_id] = new_decision
+
+    priority_order = {"CRITICAL": 0, "HIGH": 1, "MODERATE": 2}
+    result = sorted(_decisions.values(), key=lambda d: priority_order.get(d.priority, 9))
+    return result
 
 
 @router.post("/decisions/{decision_id}/approve", response_model=OrderDispatchItem, status_code=status.HTTP_200_OK)

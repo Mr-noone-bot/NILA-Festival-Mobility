@@ -290,6 +290,28 @@ class FixedFleetOptimizer:
                         deficit_pax = dem - (effective_staged * effective_capacity)
                         deficits[stop] = math.ceil(deficit_pax / float(effective_capacity))
 
+                if not surpluses and deficits:
+                    # When all monitored stops are in absolute deficit during extreme festival demand peaks,
+                    # evaluate relative queue pressure rebalancing to alleviate the critical bottleneck:
+                    pressures = {
+                        s: interval_demand.get(s, 0) / max(1, (working_alloc[s] * effective_capacity))
+                        for s in working_alloc.keys()
+                    }
+                    candidate_src = min(working_alloc.keys(), key=lambda s: pressures[s])
+                    candidate_dst = max(deficits.keys(), key=lambda s: deficits[s])
+
+                    # Transfer from lowest pressure to highest deficit if:
+                    # 1. Candidate source has more buses than min service floor
+                    # 2. Deficit stop has significantly higher pressure (> 1.25x)
+                    if (
+                        candidate_src != candidate_dst
+                        and working_alloc[candidate_src] > request.min_service_per_stop
+                        and pressures[candidate_dst] >= pressures[candidate_src] * 1.25
+                    ):
+                        max_transfer = working_alloc[candidate_src] - request.min_service_per_stop
+                        # Limit to at most 2 buses per relative rebalance step
+                        surpluses[candidate_src] = min(2, max_transfer)
+
                 if not surpluses or not deficits:
                     break
 

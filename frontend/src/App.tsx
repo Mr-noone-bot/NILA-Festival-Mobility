@@ -46,6 +46,7 @@ import {
   acknowledgeOrder,
   cannotComplyOrder,
   updateBusOccupancy,
+  syncDecisionsFromOptimization,
   type FleetSummaryResponse,
   type DecisionItem,
   type OrderDispatchItem,
@@ -199,10 +200,10 @@ export default function App() {
           shortName: first.name.replace(' Bus Stand', '').replace(' Terminal', ''),
           coordinates: [first.coordinates.lng, first.coordinates.lat],
           capacity: first.capacity,
-          currentBuses: 8,
-          recommendedBuses: 8,
-          crowd: Math.round(first.capacity * 0.8),
-          waitMinutes: 15,
+          currentBuses: 0,
+          recommendedBuses: 0,
+          crowd: 0,
+          waitMinutes: 0,
           risk: 'MODERATE',
         });
       }
@@ -260,7 +261,13 @@ export default function App() {
         weather_condition: config.rain > 50 ? 'rainy' : 'clear',
         rain_probability: config.rain,
         surge_multiplier: config.attendance / 100,
-        event_end_time: config.delayMinutes > 0 ? '2026-04-28T20:30:00+05:30' : undefined,
+        event_end_time: config.delayMinutes > 0
+          ? (() => {
+              const base = new Date('2026-04-28T20:00:00+05:30');
+              base.setMinutes(base.getMinutes() + config.delayMinutes);
+              return base.toISOString();
+            })()
+          : undefined,
       });
 
       if (currentSeq !== seqCounter.current) return; // Stale request dropped
@@ -295,13 +302,42 @@ export default function App() {
         current_allocation: currentAllocation,
         predicted_demand_profile: predictedDemand,
         time_horizon_minutes: 120,
+        use_synthetic_capacity_fallback: true,
       });
 
       if (currentSeq !== seqCounter.current) return; // Stale request dropped
       setOptimizationResponse(optResult);
 
-      // 4. Update route if move exists
+      // 4. Push dynamically grounded decision from optimizer output
       const move = optResult.repositioning_moves?.[0];
+      try {
+        const highestDemandStop = predResult?.highest_demand_stops?.[0] || move?.destination_stop || '';
+        const syncedDecisions = await syncDecisionsFromOptimization({
+          plan_id: optResult.plan_id || 'opt-plan-0001',
+          risk_level: predResult?.risk_level || 'HIGH',
+          peak_surge_time: predResult?.peak_surge_time,
+          average_waiting_time_minutes: predResult?.average_waiting_time_minutes,
+          highest_demand_stop: highestDemandStop,
+          source_stop: move?.source_stop,
+          destination_stop: move?.destination_stop,
+          buses_to_transfer: move?.buses_to_transfer,
+          departure_time: move?.departure_time,
+          arrival_time: move?.arrival_time,
+          travel_time_minutes: move?.travel_time_minutes,
+          expected_benefit: move?.expected_benefit,
+          source_service_loss: move?.source_service_loss,
+          network_effect: move?.network_effect,
+          overall_queue_reduction_percentage: optResult.overall_queue_reduction_percentage,
+          festival_id: selectedFestivalId,
+        });
+        if (currentSeq === seqCounter.current) {
+          setDecisions(syncedDecisions);
+        }
+      } catch {
+        // Decision sync non-blocking — keep existing decisions
+      }
+
+      // 5. Update route if move exists
       if (move && stopsList.length >= 2) {
         const src = stopsList.find((s) => s.id === move.source_stop);
         const dst = stopsList.find((s) => s.id === move.destination_stop);
@@ -796,12 +832,15 @@ export default function App() {
             onNavigate={setActiveNav}
             liveUpdating={liveUpdating}
             onRefresh={runReactivePipeline}
+            availableBuses={fleetData?.available}
             routeGeometry={
               routeResponse?.geometry?.coordinates
                 ? (routeResponse.geometry.coordinates as [number, number][])
                 : undefined
             }
             latestOrderCreated={latestOrderCreated}
+            config={config}
+            onUpdateConfig={(k, v) => setConfig((prev) => ({ ...prev, [k]: v }))}
           />
         )}
 

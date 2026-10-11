@@ -204,3 +204,33 @@ export async function generateHandoverBrief(): Promise<HandoverResponse> {
     method: 'POST',
   });
 }
+
+export interface DecisionSyncRequest {
+  plan_id: string;
+  risk_level: string;
+  peak_surge_time?: string;
+  average_waiting_time_minutes?: number;
+  highest_demand_stop?: string;
+  source_stop?: string;
+  destination_stop?: string;
+  buses_to_transfer?: number;
+  departure_time?: string;
+  arrival_time?: string;
+  travel_time_minutes?: number;
+  expected_benefit?: string;
+  source_service_loss?: string;
+  network_effect?: string;
+  overall_queue_reduction_percentage?: number;
+  festival_id?: string;
+}
+
+/**
+ * Sync dynamically grounded decisions from real optimization output.
+ * Called from the reactive pipeline after each predict+optimize cycle.
+ */
+export async function syncDecisionsFromOptimization(payload: DecisionSyncRequest): Promise<DecisionItem[]> {
+  return apiClient<DecisionItem[]>('/api/operations/decisions/sync', {
+    method: 'POST',
+    body: payload,
+  });
+}

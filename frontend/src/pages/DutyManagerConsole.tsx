@@ -15,6 +15,8 @@ import {
   FileText,
   Check,
   Flame,
+  CloudRain,
+  CalendarClock,
 } from 'lucide-react';
 import MapCanvas from '../components/MapCanvas';
 import type {
@@ -22,6 +24,7 @@ import type {
   Festival,
   ForecastResponse,
   OptimizeResponse,
+  ScenarioConfig,
   Stop,
 } from '../types/nila';
 import type { DecisionItem, OrderDispatchItem } from '../api/operations';
@@ -41,6 +44,9 @@ interface DutyManagerConsoleProps {
   onRefresh: () => void;
   routeGeometry?: [number, number][];
   latestOrderCreated: OrderDispatchItem | null;
+  availableBuses?: number;
+  config?: ScenarioConfig;
+  onUpdateConfig?: <K extends keyof ScenarioConfig>(key: K, value: ScenarioConfig[K]) => void;
 }
 
 export default function DutyManagerConsole({
@@ -58,6 +64,9 @@ export default function DutyManagerConsole({
   onRefresh,
   routeGeometry,
   latestOrderCreated,
+  availableBuses,
+  config,
+  onUpdateConfig,
 }: DutyManagerConsoleProps) {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [routeVisible, setRouteVisible] = useState(true);
@@ -135,6 +144,64 @@ export default function DutyManagerConsole({
         </div>
       </div>
 
+      {/* Live Event Reaction Controls (Constraint #1 Auto-Reaction Engine) */}
+      <div className="bg-slate-900/95 border border-slate-800 p-3 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold">
+            <CloudRain className="w-4 h-4 text-cyan-400" />
+            <span>Active Rain:</span>
+            <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+              {[
+                { val: 20, label: '20% Clear' },
+                { val: 50, label: '50% Moderate' },
+                { val: 70, label: '70% Heavy Rain' },
+              ].map(({ val, label }) => (
+                <button
+                  key={val}
+                  onClick={() => onUpdateConfig?.('rain', val)}
+                  className={`px-2.5 py-1 rounded text-[11px] font-bold transition ${
+                    config?.rain === val
+                      ? 'bg-cyan-600 text-white shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold">
+            <CalendarClock className="w-4 h-4 text-amber-400" />
+            <span>Event End Schedule:</span>
+            <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+              {[
+                { val: 0, label: '20:00 (On-Time)' },
+                { val: 30, label: '20:30 (+30m Delay)' },
+                { val: 60, label: '21:00 (+60m Delay)' },
+              ].map(({ val, label }) => (
+                <button
+                  key={val}
+                  onClick={() => onUpdateConfig?.('delayMinutes', val)}
+                  className={`px-2.5 py-1 rounded text-[11px] font-bold transition ${
+                    config?.delayMinutes === val
+                      ? 'bg-amber-600 text-white shadow'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Zero manual clicks — auto-recalculates prediction, fleet & queue</span>
+        </div>
+      </div>
+
       {/* Dispatch Order Toast if newly created */}
       {latestOrderCreated && (
         <div className="p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-xs rounded-xl flex items-center justify-between shadow-lg animate-fadeIn">
@@ -190,7 +257,7 @@ export default function DutyManagerConsole({
           <div className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
             <Bus className="w-3.5 h-3.5" /> Free Buses
           </div>
-          <div className="text-xl font-bold text-emerald-400 mt-1">7</div>
+          <div className="text-xl font-bold text-emerald-400 mt-1">{availableBuses ?? '—'}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Ready for repositioning</div>
         </div>
 
@@ -430,8 +497,8 @@ export default function DutyManagerConsole({
               })}
 
               {decisions.length === 0 && (
-                <div className="p-8 text-center text-slate-400 text-xs">
-                  No active repositioning decisions required. Network operating within nominal queue limits.
+                <div className="p-8 text-center text-slate-400 text-xs font-semibold">
+                  No beneficial repositioning required for this scenario.
                 </div>
               )}
             </div>
@@ -445,9 +512,14 @@ export default function DutyManagerConsole({
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl animate-scaleUp">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <span className="text-xs uppercase font-extrabold px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">
-                  {reviewDecision.priority} IMPACT
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase font-extrabold px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">
+                    {reviewDecision.priority} IMPACT
+                  </span>
+                  <span className="text-xs uppercase font-extrabold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                    CONFIDENCE: {reviewDecision.confidence}
+                  </span>
+                </div>
                 <h3 className="text-lg font-bold text-white mt-1">
                   Operational Trade-Off Review: {reviewDecision.id}
                 </h3>
@@ -474,7 +546,7 @@ export default function DutyManagerConsole({
                 </div>
                 <div className="text-sm font-semibold text-white">{reviewDecision.destination_stop}</div>
                 <div className="text-emerald-300">
-                  +2 buses added
+                  +{reviewDecision.bus_ids.length} bus{reviewDecision.bus_ids.length !== 1 ? 'es' : ''} added
                 </div>
                 <div className="text-slate-300">
                   {reviewDecision.benefit}
@@ -490,7 +562,7 @@ export default function DutyManagerConsole({
                 </div>
                 <div className="text-sm font-semibold text-white">{reviewDecision.source_stop}</div>
                 <div className="text-amber-300">
-                  -2 buses removed
+                  -{reviewDecision.bus_ids.length} bus{reviewDecision.bus_ids.length !== 1 ? 'es' : ''} redeployed
                 </div>
                 <div className="text-slate-300">
                   {reviewDecision.tradeoff}
