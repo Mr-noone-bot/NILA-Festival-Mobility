@@ -18,7 +18,7 @@ class GeminiClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "gemini-3.8-flash"
+        model_name: str = "gemini-3.5-flash"
     ):
         from backend.core.config import settings
         # Retrieve key strictly from parameter if provided, otherwise from environment or settings
@@ -46,24 +46,32 @@ class GeminiClient:
     ) -> Optional[str]:
         """
         Generates grounded text response from Gemini.
+        Cascades through fast flash models (gemini-3.5-flash, gemini-3.5-flash-lite) to guarantee uptime.
         Returns None if generation fails or client is unavailable.
         """
         if not self.is_available() or self._client is None:
             return None
 
-        try:
-            config = {}
-            if system_instruction:
-                config["system_instruction"] = system_instruction
+        config = {}
+        if system_instruction:
+            config["system_instruction"] = system_instruction
 
-            response = self._client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config if config else None
-            )
-            if response and hasattr(response, "text") and response.text:
-                return response.text.strip()
-            return None
-        except Exception:
-            # Catch API errors, timeouts, or invalid keys without crashing backend
-            return None
+        candidate_models = [self.model_name]
+        for fallback in ("gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"):
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
+
+        for model in candidate_models:
+            try:
+                response = self._client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=config if config else None
+                )
+                if response and hasattr(response, "text") and response.text:
+                    self.model_name = model
+                    return response.text.strip()
+            except Exception:
+                continue
+
+        return None
