@@ -69,9 +69,9 @@ DEFAULT_FALLBACK_FESTIVALS: Dict[str, Festival] = {
             )
         ],
         stops=[
-            Stop(id="stop-periyar", name="Periyar Bus Stand", capacity=1500, weight=0.45, current_buses=8),
-            Stop(id="stop-aarapalayam", name="Aarapalayam Bus Stand", capacity=1200, weight=0.35, current_buses=6),
-            Stop(id="stop-mattuthavani", name="Mattuthavani (MIBT)", capacity=3000, weight=0.20, current_buses=6),
+            Stop(id="stop-periyar", name="Periyar Bus Stand", capacity=1500, weight=0.45, current_buses=5),
+            Stop(id="stop-aarapalayam", name="Aarapalayam Bus Stand", capacity=1200, weight=0.35, current_buses=5),
+            Stop(id="stop-mattuthavani", name="Mattuthavani (MIBT)", capacity=3000, weight=0.20, current_buses=10),
         ],
         default_fleet_size=20
     ),
@@ -106,11 +106,18 @@ def load_festivals() -> List[Festival]:
     raw_data = load_json_file("festivals.json", required=False)
     festivals: List[Festival] = []
 
-    if raw_data and isinstance(raw_data, dict) and "items" in raw_data:
-        items = raw_data["items"]
+    if raw_data and isinstance(raw_data, dict):
+        items = raw_data.get("records") or raw_data.get("items", [])
         for item in items:
+            if not isinstance(item, dict):
+                continue
             try:
-                festivals.append(Festival.model_validate(item))
+                fest_id = item.get("id")
+                # If festival is known in our operational templates, use configured stops and baseline
+                if fest_id in DEFAULT_FALLBACK_FESTIVALS:
+                    festivals.append(DEFAULT_FALLBACK_FESTIVALS[fest_id])
+                else:
+                    festivals.append(Festival.model_validate(item))
             except Exception:
                 continue
 
@@ -121,21 +128,130 @@ def load_festivals() -> List[Festival]:
     return festivals
 
 
-def load_stops() -> List[Stop]:
+def load_stops(city: Optional[str] = None) -> List[Stop]:
     """
-    Loads stops from data/stops.json.
+    Loads stops from data/stops.json, optionally filtered by city.
     """
     raw_data = load_json_file("stops.json", required=False)
     stops: List[Stop] = []
 
-    if raw_data and isinstance(raw_data, dict) and "items" in raw_data:
-        for item in raw_data["items"]:
+    if raw_data and isinstance(raw_data, dict):
+        items = raw_data.get("records") or raw_data.get("items", [])
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if city and item.get("city", "").lower() != city.lower():
+                continue
             try:
-                stops.append(Stop.model_validate(item))
+                coords = item.get("coordinates")
+                if not coords and "latitude" in item and "longitude" in item:
+                    coords = {"lat": item["latitude"], "lng": item["longitude"]}
+                stop_obj = Stop(
+                    id=item.get("id") or item.get("stop_id", ""),
+                    name=item.get("name", ""),
+                    capacity=item.get("passenger_capacity") or item.get("capacity", 1500),
+                    weight=item.get("weight"),
+                    current_buses=item.get("current_buses", 0),
+                    coordinates=coords,
+                )
+                stops.append(stop_obj)
             except Exception:
                 continue
 
     return stops
+
+
+def load_buses() -> Dict[str, Any]:
+    """
+    Loads fixed fleet inventory from data/buses.json.
+    """
+    data = load_json_file("buses.json", required=False)
+    if not data or not isinstance(data, dict):
+        return {"records": [], "fleet_metadata": {"total_fleet_size": 20, "initial_allocation": {}}}
+    return data
+
+
+def load_crowd_profiles() -> List[Dict[str, Any]]:
+    """
+    Loads crowd profiles from data/crowd_profiles.json.
+    """
+    data = load_json_file("crowd_profiles.json", required=False)
+    if data and isinstance(data, dict):
+        return data.get("records", [])
+    return []
+
+
+def get_crowd_profile(identifier: str) -> Optional[Dict[str, Any]]:
+    """
+    Finds a crowd profile by profile_id or label.
+    """
+    slug = identifier.lower().strip()
+    for profile in load_crowd_profiles():
+        if profile.get("profile_id", "").lower() == slug or profile.get("label", "").lower() == slug:
+            return profile
+    return None
+
+
+def load_weather_profiles() -> List[Dict[str, Any]]:
+    """
+    Loads weather profiles from data/weather_profiles.json.
+    """
+    data = load_json_file("weather_profiles.json", required=False)
+    if data and isinstance(data, dict):
+        return data.get("records", [])
+    return []
+
+
+def get_weather_profile(condition: str) -> Optional[Dict[str, Any]]:
+    """
+    Finds a weather profile by profile_id or condition name.
+    """
+    slug = condition.lower().strip()
+    for profile in load_weather_profiles():
+        if profile.get("profile_id", "").lower() == slug or profile.get("condition", "").lower() == slug:
+            return profile
+    return None
+
+
+def load_scenarios() -> List[Dict[str, Any]]:
+    """
+    Loads simulation scenarios from data/scenarios.json.
+    """
+    data = load_json_file("scenarios.json", required=False)
+    if data and isinstance(data, dict):
+        return data.get("records", [])
+    return []
+
+
+def get_scenario(scenario_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Finds a simulation scenario by scenario_id.
+    """
+    slug = scenario_id.lower().strip().replace("-", "_")
+    for sc in load_scenarios():
+        if sc.get("scenario_id", "").lower().replace("-", "_") == slug:
+            return sc
+    return None
+
+
+def load_temples() -> List[Dict[str, Any]]:
+    """
+    Loads temple definitions from data/temples.json.
+    """
+    data = load_json_file("temples.json", required=False)
+    if data and isinstance(data, dict):
+        return data.get("records", [])
+    return []
+
+
+def load_routes() -> List[Dict[str, Any]]:
+    """
+    Loads transport routes from data/routes.json.
+    """
+    data = load_json_file("routes.json", required=False)
+    if data and isinstance(data, dict):
+        return data.get("records", [])
+    return []
 
 
 def get_festival(festival_id: str) -> Festival:
