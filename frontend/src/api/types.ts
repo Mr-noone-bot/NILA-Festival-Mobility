@@ -75,6 +75,8 @@ export interface PredictionRequest {
   time_window_end: string;
   weather_condition: string;
   surge_multiplier: number;
+  rain_probability?: number;
+  event_end_time?: string;
 }
 
 export interface TimelineStep {
@@ -96,9 +98,12 @@ export interface PredictionResponse {
   timeline: TimelineStep[];
   peak_surge_time: string;
   peak_crowd?: number;
+  average_waiting_time_minutes?: number;
+  risk_level?: string;
   highest_demand_stops: string[];
   stop_forecasts?: StopForecast[];
   stop_forecast?: unknown[];
+  crowd_density_points?: Array<{ latitude: number; longitude: number; weight: number }>;
 }
 
 // ==========================================
@@ -174,6 +179,10 @@ export interface SimulationStep {
 export interface SimulationResponse {
   simulation_id: string;
   steps: SimulationStep[];
+  baseline?: Record<string, any>;
+  scenario?: Record<string, any>;
+  changes?: Record<string, any>;
+  stop_comparisons?: Array<Record<string, any>>;
 }
 
 // ==========================================

@@ -13,6 +13,7 @@ from backend.api.optimize import router as optimize_router
 from backend.api.predict import router as predict_router
 from backend.api.simulate import router as simulate_router
 from backend.api.ai import router as ai_router
+from backend.api.operations import router as operations_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -39,6 +40,7 @@ app.include_router(optimize_router, prefix=settings.API_V1_PREFIX)
 app.include_router(predict_router, prefix=settings.API_V1_PREFIX)
 app.include_router(simulate_router, prefix=settings.API_V1_PREFIX)
 app.include_router(ai_router, prefix=settings.API_V1_PREFIX)
+app.include_router(operations_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/", tags=["Root"])

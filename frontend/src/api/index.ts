@@ -6,3 +6,4 @@ export * from './optimization';
 export * from './simulation';
 export * from './routes';
 export * from './ai';
+export * from './operations';

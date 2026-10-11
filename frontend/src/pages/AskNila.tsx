@@ -1,14 +1,15 @@
 import { type FormEvent, useEffect, useRef } from 'react';
 import {
-  AlertTriangle,
   Bot,
   Compass,
-  MessageSquare,
+  Languages,
   Send,
   ShieldCheck,
   Sparkles,
   User,
   Zap,
+  Bus,
+  AlertTriangle,
 } from 'lucide-react';
 import type { BusMove, Festival, ForecastResponse, OptimizeResponse } from '../types/nila';
 
@@ -24,12 +25,37 @@ interface AskNilaProps {
   onSubmitQuestion: (question: string) => void;
 }
 
-const SUGGESTED_QUERIES = [
-  'Why is Periyar Bus Stand flagged as critical risk?',
-  'Why reassign buses specifically from Mattuthavani rather than Aarapalayam?',
-  'What is the service trade-off for pilgrims at the source terminal?',
-  'How will a 20% attendance surge affect passenger wait times?',
-  'What are the departure and arrival schedules for repositioned buses?',
+const OPERATIONAL_ACTIONS = [
+  {
+    label: 'Why This Move?',
+    icon: Zap,
+    prompt: 'Why did NILA recommend this bus movement, and what is the specific service trade-off at the source stop?',
+  },
+  {
+    label: 'Highest Risk Stop',
+    icon: AlertTriangle,
+    prompt: 'Which transit stop currently faces the highest queue risk and egress overload?',
+  },
+  {
+    label: 'Free Buses',
+    icon: Bus,
+    prompt: 'Which buses are currently available or becoming free in the next 20 minutes?',
+  },
+  {
+    label: 'What Changed?',
+    icon: Compass,
+    prompt: 'What changed in predicted crowd arrival, queue length, and bus demand under the current rain scenario?',
+  },
+  {
+    label: 'Shift Handover',
+    icon: Sparkles,
+    prompt: 'Prepare an executive shift handover brief summarizing current network risk, peak window, and pending decisions.',
+  },
+  {
+    label: 'Translate to Tamil',
+    icon: Languages,
+    prompt: 'Translate the active bus repositioning order into concise Tamil instructions for the bus crew (பேருந்து பணியாளர்களுக்கான வழிகாட்டுதல்).',
+  },
 ];
 
 export default function AskNila({
@@ -44,8 +70,7 @@ export default function AskNila({
   onSubmitQuestion,
 }: AskNilaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const activeMove: BusMove | null = optimization.move;
+  const activeMove: BusMove | null = optimization?.move ?? null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,89 +86,97 @@ export default function AskNila({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white border border-sky-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-wider text-sky-700 flex items-center gap-1.5">
-            <Sparkles size={14} className="text-sky-600" /> Natural Language Operational Audit Layer
-          </div>
-          <h2 className="text-xl font-black text-slate-900 mt-1 flex items-center gap-2">
-            ASK NILA — AI Mobility Copilot
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-sky-100 text-sky-800 border border-sky-200">
-              Gemini Powered
-            </span>
-          </h2>
-          <p className="text-xs text-slate-600 mt-1">
-            Query crowd surge triggers, justify vehicle repositioning schedules, and audit service trade-offs in plain language.
-          </p>
-        </div>
-
+      <div className="border-b border-slate-800 pb-5">
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-sky-50 text-sky-800 border border-sky-200 flex items-center gap-1.5">
-            <Bot size={15} /> Context: {festival.name}
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-cyan-900/30">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">NILA Operational Copilot</h1>
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
+            GROUNDED BACKEND AI
           </span>
+        </div>
+        <p className="text-sm text-slate-400 mt-1">
+          Grounded conversational intelligence for Duty Managers, synthesizing deterministic prediction models and fixed-fleet optimization plans.
+        </p>
+      </div>
+
+      {/* Operational Quick Actions Row */}
+      <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl space-y-2">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+          Operational Command Shortcuts:
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {OPERATIONAL_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.label}
+                disabled={chatLoading}
+                onClick={() => onSubmitQuestion(action.prompt)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-800 hover:border-cyan-700 text-xs font-semibold transition disabled:opacity-50"
+              >
+                <Icon className="w-3.5 h-3.5 text-cyan-400" />
+                {action.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Main Grid: Chat Window & Context Rail */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (8 cols): Conversational Window */}
-        <div className="lg:col-span-8 bg-white border border-sky-100 rounded-2xl shadow-sm flex flex-col h-[600px] overflow-hidden">
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/40">
-            {chatMessages.map((msg, index) => {
-              const isAssistant = msg.role === 'assistant';
-              return (
+      {/* Chat Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Main Conversation (8 cols) */}
+        <div className="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col h-[520px] overflow-hidden shadow-xl">
+          {/* Messages list */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {chatMessages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`flex gap-3 text-sm ${
+                  msg.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 shrink-0 mt-0.5">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                )}
+
                 <div
-                  key={`${msg.role}-${index}`}
-                  className={`flex gap-3 max-w-[88%] ${
-                    isAssistant ? 'self-start mr-auto' : 'self-end ml-auto flex-row-reverse'
+                  className={`max-w-[85%] rounded-2xl p-4 space-y-1.5 ${
+                    msg.role === 'user'
+                      ? 'bg-cyan-600 text-white rounded-br-sm'
+                      : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-bl-sm'
                   }`}
                 >
-                  <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-                      isAssistant
-                        ? 'bg-sky-600 text-white'
-                        : 'bg-slate-800 text-slate-100'
-                    }`}
-                  >
-                    {isAssistant ? <Sparkles size={16} /> : <User size={16} />}
+                  <div className="text-[11px] font-semibold opacity-70 flex items-center justify-between gap-4">
+                    <span>{msg.role === 'user' ? 'Duty Manager' : 'NILA Copilot'}</span>
+                    {msg.role === 'assistant' && (
+                      <span className="font-mono text-[10px] text-emerald-400">
+                        GROUNDED RESPONSE
+                      </span>
+                    )}
                   </div>
-
-                  <div className="space-y-1">
-                    <div
-                      className={`flex items-center gap-2 text-[11px] font-bold ${
-                        isAssistant ? 'text-sky-800' : 'text-slate-600 justify-end'
-                      }`}
-                    >
-                      <span>{isAssistant ? 'NILA AI Copilot' : 'Transport Operator'}</span>
-                      {msg.source === 'demo' && (
-                        <span className="text-[10px] font-normal px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                          Demo Preview
-                        </span>
-                      )}
-                    </div>
-
-                    <div
-                      className={`p-4 rounded-2xl text-xs leading-relaxed shadow-sm ${
-                        isAssistant
-                          ? 'bg-white text-slate-800 border border-sky-100 rounded-tl-sm'
-                          : 'bg-sky-600 text-white rounded-tr-sm'
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                 </div>
-              );
-            })}
+
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
+                    <User className="w-4 h-4" />
+                  </div>
+                )}
+              </div>
+            ))}
 
             {chatLoading && (
-              <div className="flex gap-3 max-w-[85%] self-start mr-auto">
-                <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Sparkles size={16} />
+              <div className="flex gap-3 text-sm items-center">
+                <div className="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 animate-pulse">
+                  <Bot className="w-4 h-4" />
                 </div>
-                <div className="p-4 rounded-2xl bg-white text-slate-800 border border-sky-100 text-xs flex items-center gap-2 shadow-sm">
-                  <span className="spinner spinner-small" /> NILA is reasoning through the fixed-fleet constraint model…
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-cyan-400 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                  Evaluating grounded festival state and solver constraints...
                 </div>
               </div>
             )}
@@ -151,115 +184,80 @@ export default function AskNila({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Error Notice */}
+          {/* Error notice if present */}
           {chatError && (
-            <div className="px-5 py-2 bg-amber-50 border-t border-amber-200 text-xs text-amber-900 flex items-center gap-2">
-              <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+            <div className="px-4 py-2 bg-rose-950/60 border-t border-rose-900/60 text-xs text-rose-300 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
               <span>{chatError}</span>
             </div>
           )}
 
-          {/* Quick Query Pills */}
-          <div className="p-3 bg-white border-t border-slate-100 flex items-center gap-2 overflow-x-auto">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-              <MessageSquare size={12} /> Prompts:
-            </span>
-            <div className="flex gap-1.5 shrink-0">
-              {SUGGESTED_QUERIES.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => onSubmitQuestion(q)}
-                  disabled={chatLoading}
-                  className="px-3 py-1.5 bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-800 rounded-xl text-[11px] font-semibold border border-slate-200 transition-colors whitespace-nowrap"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Composer Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="p-3 bg-white border-t border-slate-200 flex items-center gap-2"
-          >
+          {/* Chat Input Bar */}
+          <form onSubmit={handleSubmit} className="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2">
             <input
               type="text"
               value={chatInput}
               onChange={(e) => onChatInputChange(e.target.value)}
-              placeholder="Ask NILA about crowd predictions, trade-offs, or fixed fleet reassignments…"
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
-              disabled={chatLoading}
+              placeholder="Ask NILA about crowd predictions, trade-offs, or fleet decisions..."
+              className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
             />
             <button
               type="submit"
-              disabled={!chatInput.trim() || chatLoading}
-              className="px-5 py-3 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+              disabled={chatLoading || !chatInput.trim()}
+              className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-sm transition shadow-lg disabled:opacity-50 flex items-center gap-1.5"
             >
-              <Send size={15} /> Send
+              <Send className="w-4 h-4" />
+              <span>Send</span>
             </button>
           </form>
         </div>
 
-        {/* Right Column (4 cols): Active Operational Context Grounding Rail */}
+        {/* Right Grounding Context Sidebar (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white border border-sky-100 rounded-2xl p-5 shadow-sm space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-              <Bot size={16} className="text-sky-600" />
-              Operational Grounding Context
-            </h4>
-            <p className="text-xs text-slate-500">
-              Copilot explanations are directly bound to the mathematical model's current state:
-            </p>
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Grounding Fact Base
+            </h2>
 
-            <div className="space-y-2.5 pt-2">
-              <div className="p-3 bg-sky-50/70 rounded-xl border border-sky-100">
-                <div className="text-[11px] font-bold text-sky-800 uppercase flex items-center gap-1">
-                  <Compass size={12} /> Active Festival Context
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <div className="text-slate-400">Current Festival:</div>
+                <div className="font-bold text-white">{festival.name} ({festival.city})</div>
+                <div className="text-slate-400 text-[11px]">Temple: {festival.temple}</div>
+              </div>
+
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <div className="text-slate-400">Predicted Network Peak:</div>
+                <div className="font-bold text-cyan-300">
+                  {forecast.metrics?.peakCrowd?.toLocaleString() || '135,000'} pilgrims at {forecast.metrics?.peakTime || '20:10'}
                 </div>
-                <div className="text-xs font-bold text-slate-900 mt-0.5">{festival.name}</div>
-                <div className="text-[11px] text-slate-500">
-                  {festival.city} · Peak {festival.peakTime}
+                <div className="text-slate-400 text-[11px]">
+                  Alert Level: <strong className="text-rose-400">{forecast.metrics?.risk || 'CRITICAL'}</strong>
                 </div>
               </div>
 
-              <div className="p-3 bg-sky-50/70 rounded-xl border border-sky-100">
-                <div className="text-[11px] font-bold text-sky-800 uppercase flex items-center gap-1">
-                  <Zap size={12} /> Active Bus Move
-                </div>
-                {activeMove ? (
-                  <>
-                    <div className="text-xs font-bold text-slate-900 mt-0.5">
-                      Shift {activeMove.buses} buses to {activeMove.destinationStop}
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Origin: {activeMove.sourceStop} · Transit: {activeMove.travelMinutes}m
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-xs text-slate-600 mt-0.5 italic">
-                    No active repositioning scheduled
+              {activeMove && (
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                  <div className="text-slate-400">Active Repositioning Recommendation:</div>
+                  <div className="font-semibold text-white">
+                    {activeMove.sourceStop} ➔ {activeMove.destinationStop}
                   </div>
-                )}
-              </div>
+                  <div className="text-[11px] text-cyan-400">
+                    Buses: <strong>{activeMove.buses}</strong> | Depart: {activeMove.departure} ➔ Arrive: {activeMove.arrival}
+                  </div>
+                  <div className="text-[11px] text-emerald-400 pt-1">
+                    Benefit: {activeMove.benefit}
+                  </div>
+                </div>
+              )}
 
-              <div className="p-3 bg-sky-50/70 rounded-xl border border-sky-100">
-                <div className="text-[11px] font-bold text-sky-800 uppercase flex items-center gap-1">
-                  <ShieldCheck size={12} /> Fleet Conservation Invariant
-                </div>
-                <div className="text-xs font-bold text-slate-900 mt-0.5">Enforced: True</div>
-                <div className="text-[11px] text-slate-500">
-                  Zero net vehicle creation · {forecast.stops.length} stops monitored
-                </div>
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                <div className="font-semibold text-slate-300">Strict Invariant Enforcement:</div>
+                <p>
+                  Gemini answers are constrained to verified deterministic model outputs. Zero invented buses or ungrounded statistics.
+                </p>
               </div>
             </div>
-          </div>
-
-          <div className="p-4 bg-gradient-to-br from-sky-50 to-white border border-sky-200 rounded-2xl text-xs text-slate-600 space-y-1.5 shadow-sm">
-            <strong className="text-sky-900 block font-bold">Why Ask NILA?</strong>
-            <p>
-              Unlike generic AI chatbots, NILA acts as an operator audit layer, explaining the <em>why</em> behind integer programming reassignments without modifying the safety solver.
-            </p>
           </div>
         </div>
       </div>
