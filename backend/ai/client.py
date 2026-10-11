@@ -18,10 +18,14 @@ class GeminiClient:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "gemini-2.5-flash"
+        model_name: str = "gemini-3.8-flash"
     ):
-        # Retrieve key strictly from environment if not explicitly injected
-        self.api_key = api_key if api_key else os.environ.get("GEMINI_API_KEY", "").strip()
+        from backend.core.config import settings
+        # Retrieve key strictly from parameter if provided, otherwise from environment or settings
+        if api_key is not None:
+            self.api_key = api_key.strip()
+        else:
+            self.api_key = (os.environ.get("GEMINI_API_KEY", "").strip() or settings.GEMINI_API_KEY)
         self.model_name = os.environ.get("GEMINI_MODEL", model_name)
         self._client: Optional[genai.Client] = None
 
